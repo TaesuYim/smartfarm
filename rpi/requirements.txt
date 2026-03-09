@@ -1,0 +1,21 @@
+# Raspberry Pi SmartFarm - Python 의존성
+
+# I2C / GPIO
+RPi.GPIO
+smbus2
+
+# Adafruit CircuitPython (ADS1115, SHT31, CO2 등)
+adafruit-circuitpython-ads1x15
+adafruit-circuitpython-sht31d
+adafruit-circuitpython-neopixel
+
+# MQTT
+paho-mqtt
+
+# HTTP / 날씨 API
+requests
+
+# 데이터 저장 (SQLite는 stdlib에 포함, 추가 드라이버 없음)
+
+# 테스트
+pytest
