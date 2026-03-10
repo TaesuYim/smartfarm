@@ -26,7 +26,7 @@ i2c = busio.I2C(board.SCL, board.SDA)
 ads = ADS.ADS1115(i2c, address=0x4b)
 ch1 = AnalogIn(ads, 1)  # A1
 
-print("CO2 Sensor Test (ADS1115 @ 0x49, A1)")
+print("CO2 Sensor Test (ADS1115 @ 0x4b, A1)")
 print("Shunt resistor: 150 Ω  |  Range: 0~2000 ppm")
 print("-" * 45)
 
