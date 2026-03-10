@@ -22,8 +22,8 @@ def voltage_to_ppm(voltage):
 
 i2c = busio.I2C(board.SCL, board.SDA)
 
-# ADS1115 at I2C address 0x49, CO2 sensor connected to channel A1
-ads = ADS.ADS1115(i2c, address=0x49)
+# ADS1115 at I2C address 0x4b, CO2 sensor connected to channel A1
+ads = ADS.ADS1115(i2c, address=0x4b)
 ch1 = AnalogIn(ads, 1)  # A1
 
 print("CO2 Sensor Test (ADS1115 @ 0x49, A1)")
