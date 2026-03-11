@@ -1,7 +1,7 @@
 #include <Adafruit_NeoPixel.h>
 
 // 연결 정보 설정
-#define LED_PIN     5   // 아두이노 우노 R4 WiFi의 D5 핀
+#define LED_PIN     5   // 아두이노 우노 R4 WiFi의 D5 핀 (데이터 라인과 핀 사이에 250옴 저항 연결됨)
 #define TOTAL_LEDS  100 // 100개 직렬 연결
 #define USE_LEDS    20  // 그 중 사용할 20개
 
