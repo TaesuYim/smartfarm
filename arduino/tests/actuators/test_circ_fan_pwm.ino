@@ -56,7 +56,7 @@ void setup() {
   Serial.println("Enter a number between 0 and 100 to set fan speed percentage.");
 
   // Test starting at 50% speed
-  setFanSpeed(50);
+  setFanSpeed(0);
 }
 
 void loop() {
