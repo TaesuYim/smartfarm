@@ -1,39 +1,39 @@
-#define VALVE_PIN 2 // 아두이노 D2 핀 (MOSFET Gate 연결)
+#define VALVE_PIN 2 // Arduino D2 pin (MOSFET Gate connection)
 
 void setup() {
-  Serial.begin(115200);   // 시리얼 통신 시작 (보드레이트 115200)
+  Serial.begin(115200);   // Start serial communication at 115200 baud rate
   
   pinMode(VALVE_PIN, OUTPUT);
-  digitalWrite(VALVE_PIN, LOW); // 초기 상태는 밸브 닫힘(OFF) 상태로 설정
+  digitalWrite(VALVE_PIN, LOW); // Set initial state to VALVE OFF (Closed)
   
   Serial.println("=====================================");
-  Serial.println("솔레노이드 밸브 제어 테스트 (D2 핀/MOSFET)");
-  Serial.println("시리얼 모니터에 아래 명령어를 입력해보세요:");
-  Serial.println(" '1' : 밸브 켜기 / 열기 (ON)");
-  Serial.println(" '0' : 밸브 끄기 / 닫기 (OFF)");
+  Serial.println("Solenoid Valve Control Test (Pin D2/MOSFET)");
+  Serial.println("Enter commands in the Serial Monitor:");
+  Serial.println(" '1' : Turn Valve ON / OPEN");
+  Serial.println(" '0' : Turn Valve OFF / CLOSED");
   Serial.println("=====================================");
 }
 
 void loop() {
-  // 시리얼 모니터에서 입력값이 있는지 확인
+  // Check for input from Serial Monitor
   if (Serial.available() > 0) {
-    char cmd = Serial.read(); // 입력된 첫 번째 문자 읽기
+    char cmd = Serial.read(); // Read the first incoming character
     
-    // 불필요한 줄바꿈(\n), 캐리지리턴(\r), 공백 문자 등은 무시
+    // Ignore newline (\n), carriage return (\r), and spaces
     if (cmd == '\n' || cmd == '\r' || cmd == ' ') return;
     
-    // 명령어에 따라 다르게 처리
+    // Process based on command
     if (cmd == '1') {
-      digitalWrite(VALVE_PIN, HIGH); // MOSFET의 Gate에 HIGH(5V 내지 3.3V)를 인가하여 밸브 On
-      Serial.println("=> 명령어 수신: '1' -> 밸브 켜짐 (ON)");
+      digitalWrite(VALVE_PIN, HIGH); // Set MOSFET Gate to HIGH (5V or 3.3V) to turn Valve ON
+      Serial.println("=> Command received: '1' -> Valve is ON (Open)");
     } 
     else if (cmd == '0') {
-      digitalWrite(VALVE_PIN, LOW);  // MOSFET의 Gate에 LOW를 인가하여 밸브 Off
-      Serial.println("=> 명령어 수신: '0' -> 밸브 꺼짐 (OFF)");
+      digitalWrite(VALVE_PIN, LOW);  // Set MOSFET Gate to LOW to turn Valve OFF
+      Serial.println("=> Command received: '0' -> Valve is OFF (Closed)");
     } 
     else {
-      // 지정되지 않은 명령어가 들어온 경우
-      Serial.print("알 수 없는 명령어입니다: ");
+      // Handle undefined commands
+      Serial.print("Unknown command: ");
       Serial.println(cmd);
     }
   }
