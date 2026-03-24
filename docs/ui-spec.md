@@ -26,7 +26,17 @@
 - UI의 제어 입력은 MQTT command로 publish
 - KMA API 데이터도 logger를 통해 DB에 저장된 값을 표시하는 구조를 권장
 
-### 3.2 구현 메모
+### 3.2 DB 초안 메모
+- 최신값 조회용 뷰 이름은 `docs/db-schema.md` 초안을 참고합니다.
+- 현재 초안에는 아래 latest 뷰가 정의되어 있습니다.
+  - `latest_sensor_snapshot`
+  - `latest_weather`
+  - `latest_actuator_state`
+  - `latest_heartbeat`
+  - `latest_fan_rpm`
+- 다만 위 이름은 DB 스키마 최종 확정 전까지 변경될 수 있습니다.
+
+### 3.3 구현 메모
 - 초기 MVP에서 UI와 저장 로직이 함께 있을 수는 있지만, 구조는 나중에 logger 분리가 가능하도록 설계하는 것을 권장
 
 ## 4. 탭별 요구사항
@@ -83,6 +93,7 @@
    - Raspberry Pi GPIO를 사용해 3.3V 릴레이 NC 접점을 제어
    - 클릭 방식 제어 가능
    - press-and-hold는 필수 아님
+   - 현재는 GPIO 릴레이 개별 테스트 스크립트가 존재하고, 운영용 백엔드 흐름은 별도 확정 필요
 
 - 추가 표시
   - 각 팬 제어 항목 옆 또는 근처에 현재 RPM 표시
@@ -104,6 +115,6 @@
 ## 6. TODO
 - 페이지 레이아웃 확정
 - 실시간 갱신 주기 확정
-- DB latest 테이블/뷰 이름 확정
+- `docs/db-schema.md` 초안의 latest_* 뷰 이름 최종 확정
 - 창문 개도율 계산 상세 로직 확정
-- 재부팅 버튼의 백엔드 처리 방식 확정
+- 재부팅 버튼의 운영용 백엔드 처리 방식 확정

@@ -29,6 +29,8 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
   - MQTT 토픽 구조와 payload 예시
 - [docs/ui-spec.md](docs/ui-spec.md)
   - UI 요구사항
+- [docs/db-schema.md](docs/db-schema.md)
+  - SQLite DB 스키마 초안
 - [docs/arduino-firmware-spec.md](docs/arduino-firmware-spec.md)
   - Arduino 펌웨어 요구사항
 - [OWNER.md](OWNER.md)
@@ -49,7 +51,7 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
 
 자세한 내용은 [docs/mqtt-topics.md](docs/mqtt-topics.md)를 참고하세요.
 
-## 4. 최소 레포 구조
+## 4. 현재 레포 구조(요약)
 ```text
 smartfarm/
 ├─ AGENT.md
@@ -61,13 +63,22 @@ smartfarm/
 │  ├─ repository-structure.md
 │  ├─ mqtt-topics.md
 │  ├─ ui-spec.md
+│  ├─ db-schema.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ naming-conventions.md
 │  └─ json-schemas.md
 ├─ rpi/
-│  └─ README.md
+│  ├─ README.md
+│  ├─ requirements.txt
+│  ├─ sensor_hub/
+│  ├─ logger/
+│  ├─ ui/
+│  ├─ weather_service/
+│  └─ tests/
 └─ arduino/
-   └─ README.md
+   ├─ README.md
+   ├─ control_node/
+   └─ tests/
 ```
 
 ## 5. 개발 흐름
@@ -84,6 +95,7 @@ smartfarm/
   - UI 동작 변경
   - 히터, 모터, 릴레이, 펌프 관련 안전 변경
   - Arduino state/heartbeat/RPM 동작 변경
+  - DB 스키마 초안 변경
 
 ## 7. 안전 주의
 이 프로젝트는 히터, 모터, 펌프, 솔레노이드 밸브, 릴레이를 포함합니다.

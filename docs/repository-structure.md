@@ -1,10 +1,10 @@
 <!-- File: docs/repository-structure.md -->
 # Repository Structure
 
-이 문서는 현재 레포의 최소 구조와 향후 코드가 들어갈 위치를 설명합니다.
+이 문서는 현재 레포 구조와 향후 코드가 들어갈 위치를 설명합니다.
 목표는 "복잡하지 않게 시작하고, 필요한 만큼만 늘리는 것"입니다.
 
-## 1. 현재 최소 구조
+## 1. 현재 구조
 ```text
 smartfarm/
 ├─ AGENT.md
@@ -16,11 +16,13 @@ smartfarm/
 │  ├─ repository-structure.md
 │  ├─ mqtt-topics.md
 │  ├─ ui-spec.md
+│  ├─ db-schema.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ naming-conventions.md
 │  └─ json-schemas.md
 ├─ rpi/
 │  ├─ README.md
+│  ├─ requirements.txt
 │  ├─ sensor_hub/
 │  ├─ logger/
 │  ├─ ui/
@@ -79,23 +81,27 @@ smartfarm/
   - PR 작성 템플릿과 안전 체크리스트
 - `docs/`
   - 상세 스펙과 계약 문서
+- `docs/db-schema.md`
+  - SQLite DB 스키마 초안
 - `rpi/`
   - Raspberry Pi 관련 코드 위치
 - `arduino/`
   - Arduino 관련 코드 위치
 
 ## 3. 코드가 들어갈 때 권장 구조
-현재는 최소 구조만 잡고, 실제 코드는 나중에 생성합니다.
-다만 아래와 같은 방향을 권장합니다.
+현재는 테스트와 기본 폴더 구조를 먼저 확보한 상태이며, 운영 코드는 단계적으로 채워 넣습니다.
+아래와 같은 방향을 권장합니다.
 
 ### 3.1 Raspberry Pi 코드
 ```text
 rpi/
 ├─ README.md
+├─ requirements.txt
 ├─ sensor_hub/
 ├─ logger/
 ├─ ui/
-└─ weather_service/
+├─ weather_service/
+└─ tests/
 ```
 
 - `sensor_hub/`
@@ -110,30 +116,35 @@ rpi/
 - `weather_service/`
   - KMA API 수집
   - MQTT publish
+- `tests/`
+  - 센서, GPIO, MQTT, 서비스 흐름 점검용 스크립트
 
 ### 3.2 Arduino 코드
 ```text
 arduino/
 ├─ README.md
-└─ control_node/
+├─ control_node/
+└─ tests/
 ```
 
 - `control_node/`
   - 제어 노드 펌웨어
   - MQTT subscribe/publish
   - RPM/heartbeat/state 처리
+- `tests/`
+  - 액추에이터 단위 테스트와 MQTT/RPM/integration bring-up 스케치
 
 ## 4. 구조 설계 원칙
 - 코드 디렉터리는 "기능 단위"로 나눕니다.
 - `gh1`, `gh2`용 코드를 따로 복제하지 않습니다.
 - 온실 구분은 설정값 또는 topic namespace로 처리합니다.
-- 문서 수는 최소로 유지하되, 계약(MQTT/UI/펌웨어/네이밍)은 분리 문서로 유지합니다.
+- 문서 수는 최소로 유지하되, 계약(MQTT/UI/DB/펌웨어/네이밍)은 분리 문서로 유지합니다.
 
-## 5. 나중에 추가될 수 있는 파일
-필수는 아니지만, 구현이 진행되면 아래 파일이 생길 수 있습니다.
+## 5. 현재/추후 추가될 수 있는 파일
+구현이 진행되면 아래 파일이 추가되거나 정리될 수 있습니다.
 
 - `.env.example`
-- `requirements.txt` 또는 `pyproject.toml`
+- `pyproject.toml`
 - `platformio.ini`
 - `systemd/` 서비스 파일
 - `scripts/` 배포/실행 스크립트
