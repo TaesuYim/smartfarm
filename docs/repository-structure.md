@@ -19,7 +19,8 @@ smartfarm/
 │  ├─ db-schema.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ naming-conventions.md
-│  └─ json-schemas.md
+│  ├─ json-schemas.md
+│  └─ pin-map.md
 ├─ rpi/
 │  ├─ README.md
 │  ├─ requirements.txt

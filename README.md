@@ -8,6 +8,7 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
 
 ## 1. 시스템 개요
 - 대상 온실: `gh1`, `gh2`
+- **gh1과 gh2는 MQTT 토픽만 다르고 코드는 동일** — 별도 코드 복제 없음
 - Raspberry Pi 5
   - 센서 수집(ADS1115)
   - MQTT 브로커
@@ -33,6 +34,8 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
   - SQLite DB 스키마 초안
 - [docs/arduino-firmware-spec.md](docs/arduino-firmware-spec.md)
   - Arduino 펌웨어 요구사항
+- [docs/pin-map.md](docs/pin-map.md)
+  - 핀맵/배선도 (확정 후 작성 예정)
 - [OWNER.md](OWNER.md)
   - 오너/운영자가 먼저 읽어야 할 문서
 
@@ -66,7 +69,8 @@ smartfarm/
 │  ├─ db-schema.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ naming-conventions.md
-│  └─ json-schemas.md
+│  ├─ json-schemas.md
+│  └─ pin-map.md
 ├─ rpi/
 │  ├─ README.md
 │  ├─ requirements.txt

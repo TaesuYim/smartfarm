@@ -1,6 +1,9 @@
 <!-- File: docs/db-schema.md -->
 # Database Schema
 
+> [!WARNING]
+> 이 문서는 **초안(Draft)** 입니다. 테이블 구조, 컬럼명, 뷰 정의 등이 변경될 수 있습니다.
+
 이 문서는 Raspberry Pi 5에서 사용하는 SQLite 데이터베이스의 테이블 설계를 정의합니다.
 logger 서비스가 MQTT 메시지를 수신하여 각 테이블에 저장하고, UI는 이 DB를 조회합니다.
 

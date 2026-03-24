@@ -31,7 +31,13 @@ rpi/
 - UI는 DB의 최신값을 읽는 구조를 권장합니다.
 - 테스트 스크립트는 운영 코드와 별도로 유지하는 편을 권장합니다.
 
-## 4. TODO
+## 4. 테스트 현황
+- 구현 완료: 5개 (센서 4 + 릴레이 1 + MQTT smoke 1)
+- placeholder: 8개
+- 상세: [tests/README.md](tests/README.md)
+- 핀맵: [docs/pin-map.md](../docs/pin-map.md) 확정 후 반영 예정
+
+## 5. TODO
 - 현재는 `requirements.txt` 기반이며, `pyproject.toml` 전환 여부는 추후 결정
 - systemd 서비스 파일 구조 확정
 - 실제 실행/배포 절차 정리

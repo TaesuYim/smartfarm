@@ -2,6 +2,7 @@
 
 # I2C / GPIO
 RPi.GPIO
+gpiozero
 smbus2
 
 # Adafruit CircuitPython (ADS1115, SHT31, CO2 등)
