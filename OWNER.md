@@ -22,7 +22,7 @@
 - 핀 배치는 `docs/pin-map.md`를 기준으로 관리
 
 ## 3. 현재 합의된 중요한 결정
-- AGENT.md는 짧게 유지하고 상세는 `docs/`로 분리
+- 에이전트 규칙은 `.agents/rules/`에 분리하고 상세는 `docs/`로 분리
 - 실시간 UI는 가능하면 MQTT 직접 구독보다 DB의 최신값을 읽어 표시
 - Arduino는 다음을 publish
   - actuator state

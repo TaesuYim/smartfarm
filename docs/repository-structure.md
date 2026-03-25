@@ -7,9 +7,13 @@
 ## 1. 현재 구조
 ```text
 smartfarm/
-├─ AGENT.md
 ├─ OWNER.md
 ├─ README.md
+├─ .agents/
+│  └─ rules/
+│     ├─ 01-project-overview.md
+│     ├─ 02-docs-first.md
+│     └─ 03-safety.md
 ├─ .github/
 │  └─ pull_request_template.md
 ├─ docs/
@@ -72,8 +76,8 @@ smartfarm/
 ```
 
 ## 2. 각 위치의 역할
-- `AGENT.md`
-  - 에이전트가 가장 먼저 읽는 짧은 안내서
+- `.agents/rules/`
+  - AI 에이전트 규칙 (대화 시작 시 자동 로드)
 - `OWNER.md`
   - 오너/운영자 관점의 메모
 - `README.md`

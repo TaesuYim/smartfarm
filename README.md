@@ -21,8 +21,7 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
   - actuator state publish
 
 ## 2. 핵심 문서
-- [AGENT.md](AGENT.md)
-  - 에이전트용 최상위 안내서
+- `.agents/rules/` — AI 에이전트 규칙 (자동 로드)
 - [docs/repository-structure.md](docs/repository-structure.md)
   - 현재 레포 구조와 향후 코드 배치 방향
 - [docs/mqtt-topics.md](docs/mqtt-topics.md)
@@ -56,9 +55,13 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
 ## 4. 현재 레포 구조(요약)
 ```text
 smartfarm/
-├─ AGENT.md
 ├─ OWNER.md
 ├─ README.md
+├─ .agents/
+│  └─ rules/
+│     ├─ 01-project-overview.md
+│     ├─ 02-docs-first.md
+│     └─ 03-safety.md
 ├─ .github/
 │  └─ pull_request_template.md
 ├─ docs/
