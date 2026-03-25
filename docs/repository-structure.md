@@ -17,10 +17,10 @@ smartfarm/
 │  ├─ mqtt-topics.md
 │  ├─ ui-spec.md
 │  ├─ db-schema.md
+│  ├─ pin-map.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ naming-conventions.md
-│  ├─ json-schemas.md
-│  └─ pin-map.md
+│  └─ json-schemas.md
 ├─ rpi/
 │  ├─ README.md
 │  ├─ requirements.txt
@@ -84,6 +84,8 @@ smartfarm/
   - 상세 스펙과 계약 문서
 - `docs/db-schema.md`
   - SQLite DB 스키마 초안
+- `docs/pin-map.md`
+  - ADS1115 주소/채널과 Arduino 핀 배치
 - `rpi/`
   - Raspberry Pi 관련 코드 위치
 - `arduino/`
@@ -139,7 +141,7 @@ arduino/
 - 코드 디렉터리는 "기능 단위"로 나눕니다.
 - `gh1`, `gh2`용 코드를 따로 복제하지 않습니다.
 - 온실 구분은 설정값 또는 topic namespace로 처리합니다.
-- 문서 수는 최소로 유지하되, 계약(MQTT/UI/DB/펌웨어/네이밍)은 분리 문서로 유지합니다.
+- 문서 수는 최소로 유지하되, 계약(MQTT/UI/DB/핀맵/펌웨어/네이밍)은 분리 문서로 유지합니다.
 
 ## 5. 현재/추후 추가될 수 있는 파일
 구현이 진행되면 아래 파일이 추가되거나 정리될 수 있습니다.

@@ -24,13 +24,11 @@ arduino/
 - 같은 펌웨어 코드베이스를 사용하고, 온실 ID는 설정값으로 처리합니다.
 - 토픽/키 구조는 반드시 docs 문서를 따릅니다.
 - `tests/`의 스케치는 하드웨어 검증용이며, 최종 운영 펌웨어는 `control_node/`에 모으는 것을 권장합니다.
+- 실제 핀 배치는 `docs/pin-map.md`를 기준으로 관리합니다.
 
-## 4. 테스트 현황
-- 구현 완료: 7개 (팬 2 + 히터 1 + 밸브 1 + 미스트 1 + 창문 1 + LED 1)
-- placeholder: 6개 (펌프, RPM, MQTT 3, integration 1)
-- 상세: [tests/README.md](tests/README.md)
-- 핀맵: [docs/pin-map.md](../docs/pin-map.md) 확정 후 반영 예정
-
-## 5. TODO
-- 빌드 도구 선택 (Arduino IDE / PlatformIO)
+## 4. TODO
+- 빌드 도구 선택
+  - Arduino IDE
+  - PlatformIO
+- 실제 배선도 문서
 - RPM 측정 구현 방식 확정

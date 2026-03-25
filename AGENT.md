@@ -24,6 +24,8 @@
   - UI 탭 구조, 데이터 흐름, 화면 요구사항
 - [docs/db-schema.md](docs/db-schema.md)
   - SQLite DB 스키마 초안과 latest 뷰 정의
+- [docs/pin-map.md](docs/pin-map.md)
+  - ADS1115 주소/채널과 Arduino 핀 배치
 - [docs/arduino-firmware-spec.md](docs/arduino-firmware-spec.md)
   - 제어 노드(Arduino) 요구사항
 - [docs/naming-conventions.md](docs/naming-conventions.md)
@@ -51,10 +53,10 @@
   - 액추에이터 제어
   - 과거 추세
 - DB 스키마는 `docs/db-schema.md` 초안을 기준으로 계속 다듬는 중입니다.
+- 핀 배치는 `docs/pin-map.md`를 기준으로 관리합니다.
 
 ## 4. 에이전트에게 중요한 비기능 규칙
-- **gh1과 gh2는 MQTT 토픽(`sf/gh1/...`, `sf/gh2/...`)만 다르고 코드는 완전히 동일합니다.** 온실별로 별도 코드를 만들지 않고, 설정 또는 파라미터로 처리합니다.
+- 같은 기능이라도 `gh1`, `gh2`를 소스 코드로 분기 복제하지 말고, 설정 또는 파라미터로 처리합니다.
 - 가능한 한 단순한 구조로 구현합니다.
 - 문서에 없는 새 토픽/새 키를 추가해야 한다면 먼저 관련 문서를 갱신합니다.
-- 핀맵/배선 관련 사항은 `docs/pin-map.md`를 참고합니다.
 - 하드웨어 안전과 관련된 변경은 PR 템플릿 체크리스트를 반드시 확인합니다.
