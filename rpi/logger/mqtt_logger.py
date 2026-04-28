@@ -75,7 +75,7 @@ def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_message = build_on_message(conn)
     client.connect(args.host, args.port, 60)
-    client.subscribe("sensor/ads1115_+/+/+")
+    client.subscribe("sensor/+/+/+")
     client.subscribe("sf/+/sensors/snapshot")
     print(f"logging MQTT messages from {args.host}:{args.port} into {args.db}")
     client.loop_forever()

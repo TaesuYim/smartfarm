@@ -7,7 +7,7 @@ from adafruit_ads1x15.analog_in import AnalogIn
 
 BROKER_HOST = "127.0.0.1"
 BROKER_PORT = 1883
-RATE = 5
+RATE = 1
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.connect(BROKER_HOST, BROKER_PORT, 60)
