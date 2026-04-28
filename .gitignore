@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+
+sensor_snapshot_*/
+sensor_snapshot_*.sqlite3
