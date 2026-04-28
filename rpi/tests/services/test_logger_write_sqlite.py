@@ -2,64 +2,7 @@ from contextlib import closing
 import sqlite3
 import unittest
 
-
-CREATE_SENSOR_SNAPSHOT_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS sensor_snapshot (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    greenhouse      TEXT    NOT NULL,
-    ts              TEXT    NOT NULL,
-    source          TEXT,
-    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
-
-    temp_pot_c              REAL,
-    hum_pot_pct             REAL,
-    temp_top_c              REAL,
-    hum_top_pct             REAL,
-    co2_ppm                 REAL,
-    par_w_m2                REAL,
-    soil_moisture_1_pct     REAL,
-    soil_moisture_2_pct     REAL,
-    soil_moisture_3_pct     REAL,
-    soil_moisture_4_pct     REAL,
-    soil_moisture_5_pct     REAL,
-    soil_moisture_6_pct     REAL
-);
-"""
-
-
-SENSOR_VALUE_COLUMNS = (
-    "temp_pot_c",
-    "hum_pot_pct",
-    "temp_top_c",
-    "hum_top_pct",
-    "co2_ppm",
-    "par_w_m2",
-    "soil_moisture_1_pct",
-    "soil_moisture_2_pct",
-    "soil_moisture_3_pct",
-    "soil_moisture_4_pct",
-    "soil_moisture_5_pct",
-    "soil_moisture_6_pct",
-)
-
-
-def create_sensor_snapshot_table(conn):
-    conn.execute(CREATE_SENSOR_SNAPSHOT_TABLE_SQL)
-
-
-def insert_sensor_snapshot(conn, greenhouse, payload):
-    columns = ("greenhouse", "ts", "source", *SENSOR_VALUE_COLUMNS)
-    values = [greenhouse, payload["ts"], payload.get("source")]
-    values.extend(payload[column] for column in SENSOR_VALUE_COLUMNS)
-
-    placeholders = ", ".join("?" for _ in columns)
-    column_names = ", ".join(columns)
-
-    conn.execute(
-        f"INSERT INTO sensor_snapshot ({column_names}) VALUES ({placeholders})",
-        values,
-    )
-    conn.commit()
+from rpi.logger.db import SENSOR_VALUE_COLUMNS, init_db, insert_sensor_snapshot
 
 
 class SensorSnapshotSqliteTest(unittest.TestCase):
@@ -83,7 +26,7 @@ class SensorSnapshotSqliteTest(unittest.TestCase):
 
         with closing(sqlite3.connect(":memory:")) as conn:
             conn.row_factory = sqlite3.Row
-            create_sensor_snapshot_table(conn)
+            init_db(conn)
             insert_sensor_snapshot(conn, greenhouse="gh1", payload=sample_payload)
 
             row = conn.execute(
