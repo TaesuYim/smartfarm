@@ -2,6 +2,14 @@ import argparse
 import json
 import re
 
+import sys
+from pathlib import Path
+
+# Add project root to sys.path to allow absolute imports when running as a script
+project_root = str(Path(__file__).resolve().parents[2])
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 from rpi.logger.db import connect_db, init_db, insert_ads_reading, insert_sensor_snapshot
 
 

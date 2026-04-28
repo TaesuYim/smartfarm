@@ -4,8 +4,14 @@ import json
 import sqlite3
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+# Add project root to sys.path to allow absolute imports when running as a script
+project_root = str(Path(__file__).resolve().parents[2])
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 from rpi.logger.db import SENSOR_VALUE_COLUMNS
 
@@ -14,18 +20,18 @@ DEFAULT_DB_PATH = "smartfarm.sqlite3"
 GREENHOUSES = ("gh1", "gh2")
 
 SENSOR_LABELS = {
-    "temp_pot_c": ("Pot Temperature", "C"),
-    "hum_pot_pct": ("Pot Humidity", "%"),
-    "temp_top_c": ("Top Temperature", "C"),
-    "hum_top_pct": ("Top Humidity", "%"),
-    "co2_ppm": ("CO2", "ppm"),
-    "par_w_m2": ("PAR", "W/m2"),
-    "soil_moisture_1_pct": ("Soil Moisture 1", "%"),
-    "soil_moisture_2_pct": ("Soil Moisture 2", "%"),
-    "soil_moisture_3_pct": ("Soil Moisture 3", "%"),
-    "soil_moisture_4_pct": ("Soil Moisture 4", "%"),
-    "soil_moisture_5_pct": ("Soil Moisture 5", "%"),
-    "soil_moisture_6_pct": ("Soil Moisture 6", "%"),
+    "temp_pot_c": ("Pot Temperature", "V"),
+    "hum_pot_pct": ("Pot Humidity", "V"),
+    "temp_top_c": ("Top Temperature", "V"),
+    "hum_top_pct": ("Top Humidity", "V"),
+    "co2_ppm": ("CO2", "V"),
+    "par_w_m2": ("PAR", "V"),
+    "soil_moisture_1_pct": ("Soil Moisture 1", "V"),
+    "soil_moisture_2_pct": ("Soil Moisture 2", "V"),
+    "soil_moisture_3_pct": ("Soil Moisture 3", "V"),
+    "soil_moisture_4_pct": ("Soil Moisture 4", "V"),
+    "soil_moisture_5_pct": ("Soil Moisture 5", "V"),
+    "soil_moisture_6_pct": ("Soil Moisture 6", "V"),
 }
 
 
