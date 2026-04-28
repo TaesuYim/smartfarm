@@ -29,16 +29,20 @@ from adafruit_ads1x15.analog_in import AnalogIn
 # ==========================================
 
 def voltage_to_temp_c(voltage):
-    """SHT 계열 온도 센서 전압 → 섭씨 변환 (임시: voltage 그대로)"""
-    return round(voltage, 4)
+    """0.666V=-19.9C, 3.3V=60C 변환"""
+    # 전압이 0.666 미만일 경우 처리 (하한값 보정)
+    v_adj = max(0, voltage - 0.666)
+    return round((v_adj * (79.9 / 2.634)) - 19.9, 2)
 
 def voltage_to_hum_pct(voltage):
-    """SHT 계열 습도 센서 전압 → 퍼센트 변환 (임시: voltage 그대로)"""
-    return round(voltage, 4)
+    """0.666V=0%, 3.3V=99.9% 변환"""
+    v_adj = max(0, voltage - 0.666)
+    return round(v_adj * (99.9 / 2.634), 2)
 
 def voltage_to_co2_ppm(voltage):
-    """CO2 센서 전압 → ppm 변환 (임시: voltage 그대로)"""
-    return round(voltage, 4)
+    """0.666V=0ppm, 3.3V=5000ppm 변환"""
+    v_adj = max(0, voltage - 0.666)
+    return round(v_adj * (5000 / 2.634), 1)
 
 def voltage_to_par_w_m2(voltage):
     """PAR 센서 전압 → W/m2 변환 (임시: voltage 그대로)"""
