@@ -365,7 +365,7 @@ INDEX_HTML = """<!doctype html>
     updateClock();
     loadLatest();
     setInterval(updateClock, 1000);
-    setInterval(loadLatest, 5000);
+    setInterval(loadLatest, 1000);
   </script>
 </body>
 </html>

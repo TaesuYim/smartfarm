@@ -95,7 +95,7 @@ while True:
             for i, ch in enumerate(channels):
                 # 채널 전환 시 안정화를 위해 첫 번째 값은 무시하고 짧은 딜레이 후 다시 읽습니다.
                 _ = ch.voltage
-                time.sleep(0.05)
+                time.sleep(0.1)
                 
                 v = ch.voltage
                 val = ch.value
