@@ -93,10 +93,16 @@ while True:
             continue
         try:
             for i, ch in enumerate(channels):
+                # 채널 전환 시 안정화를 위해 첫 번째 값은 무시하고 짧은 딜레이 후 다시 읽습니다.
+                _ = ch.voltage
+                time.sleep(0.05)
+                
+                v = ch.voltage
+                val = ch.value
                 topic_base = f"sensor/ads1115_0x{addr}/a{i}"
-                client.publish(f"{topic_base}/raw", int(ch.value))
-                client.publish(f"{topic_base}/voltage", float(ch.voltage))
-                print(f"[0x{addr}] A{i}: {ch.value:5d} | {ch.voltage:.3f}V")
+                client.publish(f"{topic_base}/raw", int(val))
+                client.publish(f"{topic_base}/voltage", float(v))
+                print(f"[0x{addr}] A{i}: {val:5d} | {v:.3f}V")
         except Exception as e:
             print(f"[0x{addr}] Error reading: {e}")
 

@@ -91,6 +91,9 @@ def read_snapshot(ch_4b, ch_49, ch_48):
     """
     def safe_read(channels, idx, convert_fn):
         try:
+            # 채널 전환 후 전압 안정화를 위해 첫 번째 값은 버리고 약간의 딜레이를 줍니다.
+            _ = channels[idx].voltage
+            time.sleep(0.05)
             return convert_fn(channels[idx].voltage)
         except Exception as e:
             print(f"    채널 읽기 오류 (idx={idx}): {e}")

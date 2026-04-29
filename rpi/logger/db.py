@@ -24,6 +24,29 @@ CREATE TABLE IF NOT EXISTS sensor_snapshot (
 );
 """
 
+CREATE_SENSOR_LATEST_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS sensor_latest (
+    greenhouse      TEXT    PRIMARY KEY,
+    id              INTEGER,
+    ts              TEXT    NOT NULL,
+    source          TEXT,
+    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
+
+    temp_pot_c              REAL,
+    hum_pot_pct             REAL,
+    temp_top_c              REAL,
+    hum_top_pct             REAL,
+    co2_ppm                 REAL,
+    par_w_m2                REAL,
+    soil_moisture_1_pct     REAL,
+    soil_moisture_2_pct     REAL,
+    soil_moisture_3_pct     REAL,
+    soil_moisture_4_pct     REAL,
+    soil_moisture_5_pct     REAL,
+    soil_moisture_6_pct     REAL
+);
+"""
+
 CREATE_ADS_READING_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS ads_reading (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,6 +89,7 @@ def connect_db(db_path):
 
 def init_db(conn):
     conn.execute(CREATE_SENSOR_SNAPSHOT_TABLE_SQL)
+    conn.execute(CREATE_SENSOR_LATEST_TABLE_SQL)
     conn.execute(CREATE_ADS_READING_TABLE_SQL)
     for statement in CREATE_INDEXES_SQL:
         conn.execute(statement)
@@ -80,10 +104,24 @@ def insert_sensor_snapshot(conn, greenhouse, payload):
     placeholders = ", ".join("?" for _ in columns)
     column_names = ", ".join(columns)
 
-    conn.execute(
+    cursor = conn.execute(
         f"INSERT INTO sensor_snapshot ({column_names}) VALUES ({placeholders})",
         values,
     )
+    last_id = cursor.lastrowid
+
+    # 최신값 전용 테이블 업데이트 (REPLACE INTO 사용)
+    columns_latest = ("id", "greenhouse", "ts", "source", *SENSOR_VALUE_COLUMNS)
+    values_latest = [last_id, greenhouse, payload["ts"], payload.get("source")]
+    values_latest.extend(payload.get(column) for column in SENSOR_VALUE_COLUMNS)
+    placeholders_latest = ", ".join("?" for _ in columns_latest)
+    column_names_latest = ", ".join(columns_latest)
+
+    conn.execute(
+        f"REPLACE INTO sensor_latest ({column_names_latest}) VALUES ({placeholders_latest})",
+        values_latest,
+    )
+    
     conn.commit()
 
 

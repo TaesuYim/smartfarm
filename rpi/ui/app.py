@@ -46,13 +46,7 @@ def fetch_latest_sensor_snapshot(db_path, greenhouse):
     with closing(sqlite3.connect(db_file)) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            """
-            SELECT *
-            FROM sensor_snapshot
-            WHERE greenhouse = ?
-            ORDER BY ts DESC, id DESC
-            LIMIT 1
-            """,
+            "SELECT * FROM sensor_latest WHERE greenhouse = ?",
             (greenhouse,),
         ).fetchone()
 
