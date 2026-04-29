@@ -66,8 +66,9 @@ def init_i2c():
 def try_init_ads(i2c, address):
     try:
         ads = ADS.ADS1115(i2c, address=address)
+        ads.data_rate = 860  # 읽기 속도 증가 (기본 128 -> 860 SPS)
         channels = [AnalogIn(ads, i) for i in range(4)]
-        print(f"  ADS1115 0x{address:02x} 초기화 성공")
+        print(f"  ADS1115 0x{address:02x} 초기화 성공 (860 SPS)")
         return ads, channels
     except Exception as e:
         print(f"  ADS1115 0x{address:02x} 초기화 실패: {e}")
@@ -94,13 +95,13 @@ def read_snapshot(ch_4b, ch_49, ch_48):
         try:
             # 채널 전환 후 전압 안정화를 위해 첫 번째 값은 버립니다.
             _ = channels[idx].voltage
-            time.sleep(0.02)
+            time.sleep(0.01)
 
             # 3번 읽어서 중간값(median)을 취함 (튀는 값 방지)
             samples = []
             for _ in range(3):
                 samples.append(channels[idx].voltage)
-                time.sleep(0.01)
+                time.sleep(0.005)
 
             median_v = statistics.median(samples)
             return convert_fn(median_v)
@@ -158,6 +159,7 @@ def main():
     print("발행 시작... (Ctrl+C로 종료)")
     try:
         while True:
+            loop_start = time.time()
             ts = now_kst()
             sensor_values = read_snapshot(
                 ch_4b if ads_4b else None,
@@ -173,11 +175,13 @@ def main():
 
             client.publish(topic, json.dumps(payload))
             print(f"[{ts}] 발행 → {topic}")
-            for k, v in sensor_values.items():
-                print(f"  {k}: {v}")
-            print()
+            # for k, v in sensor_values.items():
+            #     print(f"  {k}: {v}")
+            # print()
 
-            time.sleep(period)
+            # 루프 실행 시간을 고려하여 남은 시간만큼만 대기
+            elapsed = time.time() - loop_start
+            time.sleep(max(0, period - elapsed))
 
     except KeyboardInterrupt:
         print("\n종료합니다.")
