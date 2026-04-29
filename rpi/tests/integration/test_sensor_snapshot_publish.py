@@ -75,6 +75,10 @@ def try_init_ads(i2c, address):
         return None, []
 
 
+# 각 채널별 마지막 정상 값과 연속 튀는 횟수 저장
+LAST_GOOD_VALUES = {}
+OUTLIER_COUNT = {}
+
 def read_snapshot(ch_4b, ch_49, ch_48):
     """
     핀맵 기준:
@@ -91,7 +95,7 @@ def read_snapshot(ch_4b, ch_49, ch_48):
       0x48 A2: 토양수분5 → soil_moisture_5_pct
       0x48 A3: 토양수분6 → soil_moisture_6_pct
     """
-    def safe_read(channels, idx, convert_fn):
+    def safe_read(channels, idx, convert_fn, key, threshold):
         try:
             # 채널 전환 후 전압 안정화를 위해 첫 번째 값은 버립니다.
             _ = channels[idx].voltage
@@ -101,33 +105,44 @@ def read_snapshot(ch_4b, ch_49, ch_48):
             samples = []
             for _ in range(5):
                 v = channels[idx].voltage
-                # 0.0V 근처의 값은 명백한 읽기 오류이므로 제외
                 if v > 0.005:
                     samples.append(v)
                 time.sleep(0.005)
 
             if not samples:
-                return None
+                return LAST_GOOD_VALUES.get(key)
                 
             median_v = statistics.median(samples)
-            return convert_fn(median_v)
-        except Exception as e:
-            # 읽기 실패 시 0이 아닌 None을 반환하여 UI에서 '-'로 표시되게 함
-            return None
+            current_val = convert_fn(median_v)
+
+            # 델타 필터: 이전 값과 너무 차이가 크면 노이즈로 간주
+            if key in LAST_GOOD_VALUES:
+                last_val = LAST_GOOD_VALUES[key]
+                if abs(current_val - last_val) > threshold:
+                    OUTLIER_COUNT[key] = OUTLIER_COUNT.get(key, 0) + 1
+                    # 3회 연속으로 튀는 경우에만 실제 변화로 인정
+                    if OUTLIER_COUNT[key] < 3:
+                        return last_val
+            
+            LAST_GOOD_VALUES[key] = current_val
+            OUTLIER_COUNT[key] = 0
+            return current_val
+        except Exception:
+            return LAST_GOOD_VALUES.get(key)
 
     return {
-        "temp_pot_c":          safe_read(ch_4b, 0, voltage_to_temp_c)      if ch_4b else None,
-        "hum_pot_pct":         safe_read(ch_4b, 1, voltage_to_hum_pct)     if ch_4b else None,
-        "temp_top_c":          safe_read(ch_4b, 2, voltage_to_temp_c)      if ch_4b else None,
-        "hum_top_pct":         safe_read(ch_4b, 3, voltage_to_hum_pct)     if ch_4b else None,
-        "co2_ppm":             safe_read(ch_49, 0, voltage_to_co2_ppm)     if ch_49 else None,
-        "par_w_m2":            safe_read(ch_49, 1, voltage_to_par_w_m2)    if ch_49 else None,
-        "soil_moisture_1_pct": safe_read(ch_49, 2, voltage_to_soil_moisture_pct) if ch_49 else None,
-        "soil_moisture_2_pct": safe_read(ch_49, 3, voltage_to_soil_moisture_pct) if ch_49 else None,
-        "soil_moisture_3_pct": safe_read(ch_48, 0, voltage_to_soil_moisture_pct) if ch_48 else None,
-        "soil_moisture_4_pct": safe_read(ch_48, 1, voltage_to_soil_moisture_pct) if ch_48 else None,
-        "soil_moisture_5_pct": safe_read(ch_48, 2, voltage_to_soil_moisture_pct) if ch_48 else None,
-        "soil_moisture_6_pct": safe_read(ch_48, 3, voltage_to_soil_moisture_pct) if ch_48 else None,
+        "temp_pot_c":          safe_read(ch_4b, 0, voltage_to_temp_c, "temp_pot", 5.0)       if ch_4b else None,
+        "hum_pot_pct":         safe_read(ch_4b, 1, voltage_to_hum_pct, "hum_pot", 10.0)      if ch_4b else None,
+        "temp_top_c":          safe_read(ch_4b, 2, voltage_to_temp_c, "temp_top", 5.0)       if ch_4b else None,
+        "hum_top_pct":         safe_read(ch_4b, 3, voltage_to_hum_pct, "hum_top", 10.0)      if ch_4b else None,
+        "co2_ppm":             safe_read(ch_49, 0, voltage_to_co2_ppm, "co2", 500.0)         if ch_49 else None,
+        "par_w_m2":            safe_read(ch_49, 1, voltage_to_par_w_m2, "par", 2.0)          if ch_49 else None,
+        "soil_moisture_1_pct": safe_read(ch_49, 2, voltage_to_soil_moisture_pct, "sm1", 10.0) if ch_49 else None,
+        "soil_moisture_2_pct": safe_read(ch_49, 3, voltage_to_soil_moisture_pct, "sm2", 10.0) if ch_49 else None,
+        "soil_moisture_3_pct": safe_read(ch_48, 0, voltage_to_soil_moisture_pct, "sm3", 10.0) if ch_48 else None,
+        "soil_moisture_4_pct": safe_read(ch_48, 1, voltage_to_soil_moisture_pct, "sm4", 10.0) if ch_48 else None,
+        "soil_moisture_5_pct": safe_read(ch_48, 2, voltage_to_soil_moisture_pct, "sm5", 10.0) if ch_48 else None,
+        "soil_moisture_6_pct": safe_read(ch_48, 3, voltage_to_soil_moisture_pct, "sm6", 10.0) if ch_48 else None,
     }
 
 
