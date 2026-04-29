@@ -97,16 +97,22 @@ def read_snapshot(ch_4b, ch_49, ch_48):
             _ = channels[idx].voltage
             time.sleep(0.01)
 
-            # 3번 읽어서 중간값(median)을 취함 (튀는 값 방지)
+            # 5번 읽어서 중간값(median)을 취함 (튀는 값 방지 성능 강화)
             samples = []
-            for _ in range(3):
-                samples.append(channels[idx].voltage)
+            for _ in range(5):
+                v = channels[idx].voltage
+                # 0.0V 근처의 값은 명백한 읽기 오류이므로 제외
+                if v > 0.005:
+                    samples.append(v)
                 time.sleep(0.005)
 
+            if not samples:
+                return None
+                
             median_v = statistics.median(samples)
             return convert_fn(median_v)
         except Exception as e:
-            print(f"    채널 읽기 오류 (idx={idx}): {e}")
+            # 읽기 실패 시 0이 아닌 None을 반환하여 UI에서 '-'로 표시되게 함
             return None
 
     return {
