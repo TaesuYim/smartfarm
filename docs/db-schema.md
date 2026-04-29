@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS actuator_cmd (
     -- 창문 제어
     window_1_cmd    TEXT,  -- 'open' | 'close' | 'stop'
     window_2_cmd    TEXT,
+    shading_screen_cmd  TEXT,
 
     -- LED 제어
     led_r               INTEGER,  -- 0..255
@@ -152,6 +153,7 @@ CREATE TABLE IF NOT EXISTS actuator_state (
 
     window_1_cmd    TEXT,
     window_2_cmd    TEXT,
+    shading_screen_cmd  TEXT,
 
     led_r               INTEGER,
     led_g               INTEGER,
@@ -356,6 +358,7 @@ erDiagram
         INTEGER mist_on
         TEXT window_1_cmd
         TEXT window_2_cmd
+        TEXT shading_screen_cmd
         INTEGER led_r
         INTEGER led_g
         INTEGER led_b
@@ -387,6 +390,7 @@ erDiagram
         INTEGER mist_on
         TEXT window_1_cmd
         TEXT window_2_cmd
+        TEXT shading_screen_cmd
         INTEGER led_r
         INTEGER led_g
         INTEGER led_b

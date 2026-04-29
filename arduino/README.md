@@ -6,10 +6,9 @@
 
 ## 1. 이 디렉터리의 역할
 - MQTT command 구독
-- 팬, 히터, 펌프, 밸브, 창문, LED 제어
+- 팬, 히터, 펌프, 밸브, 창문, LED, 차광스크린(스텝모터) 제어
 - actuator state publish
 - heartbeat publish
-- fan RPM publish
 
 ## 2. 현재 구조(요약)
 ```text

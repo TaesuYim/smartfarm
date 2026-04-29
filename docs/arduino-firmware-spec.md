@@ -9,7 +9,6 @@
 - 하드웨어 제어 수행
 - actuator state publish
 - heartbeat publish
-- fan RPM publish
 
 ## 1. 토픽 연결
 
@@ -19,7 +18,6 @@
 ### 1.2 Publish
 - `sf/<gh>/actuators/state`
 - `sf/<gh>/actuators/heartbeat`
-- `sf/<gh>/actuators/fan-rpm`
 
 ### 1.3 온실 구분
 - `<gh>`는 `gh1` 또는 `gh2`
@@ -108,6 +106,17 @@
   - `Adafruit_NeoPixel` 라이브러리 사용
   - WS2811 계열 addressable LED 방식으로 점검
 - 실제 LED 모델, 색 순서, 개수는 최종 하드웨어 기준으로 다시 확정
+
+### 2.5 차광스크린 (스텝모터)
+- 기능: 차광스크린 열기, 닫기, 정지
+- 입력: `shading_screen_cmd`
+- 명령:
+  - `open`: 스크린 열기 방향 회전
+  - `close`: 스크린 닫기 방향 회전
+  - `stop`: 회전 중지
+- 출력:
+  - `D10 (PUL)`: 펄스 신호 (이동 속도/거리 제어)
+  - `D11 (DIR)`: 방향 신호 (High/Low)
 
 ## 3. Fan RPM 측정
 - 측정 대상

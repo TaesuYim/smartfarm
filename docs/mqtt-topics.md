@@ -111,6 +111,7 @@
   - PWM: `0..100`
   - ON/OFF: `true/false`
   - 창문 명령: `"open" | "close" | "stop"`
+  - 차광스크린 명령: `"open" | "close" | "stop"`
   - LED
     - `led_r`: `0..255`
     - `led_g`: `0..255`
@@ -137,6 +138,7 @@
 - `mist_on`
 - `window_1_cmd`
 - `window_2_cmd`
+- `shading_screen_cmd`
 - `led_r`
 - `led_g`
 - `led_b`
@@ -164,6 +166,7 @@
   "mist_on": false,
   "window_1_cmd": "stop",
   "window_2_cmd": "close",
+  "shading_screen_cmd": "stop",
   "led_r": 80,
   "led_g": 30,
   "led_b": 0,
@@ -206,6 +209,7 @@
     "mist_on": false,
     "window_1_cmd": "stop",
     "window_2_cmd": "close",
+    "shading_screen_cmd": "stop",
     "led_r": 80,
     "led_g": 30,
     "led_b": 0,
@@ -262,10 +266,7 @@
 }
 ```
 
-## 9. 현재 범위 밖 항목
 - Arduino 재부팅은 현재 MQTT 토픽이 아니라 Raspberry Pi GPIO + 릴레이로 수행합니다.
-- 차광 블라인드 제어 토픽은 현재 문서 범위 밖입니다.
-  - 필요 시 추후 `actuators/*` 하위에 별도 추가
 
 ## 10. TODO
 - retain/QoS 정책 확정
