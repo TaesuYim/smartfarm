@@ -1,117 +1,163 @@
 <!-- File: docs/naming-conventions.md -->
 # Naming Conventions
 
-이 문서는 토픽, JSON key, 디바이스 이름 등의 규칙을 정리합니다.
-목표는 UI, logger, Raspberry Pi, Arduino가 같은 이름을 쓰도록 하는 것입니다.
+UI, logger, Raspberry Pi, Arduino가 같은 이름을 쓰도록 하는 규칙입니다.
 
-## 1. 기본 규칙
+## 1. Product/UI Name
 
-### 1.1 MQTT topic
-- 형식: `sf/<gh>/<domain>/<name>`
-- `<gh>`: `gh1`, `gh2`
-- `<domain>`: `sensors`, `actuators`
-- topic segment 표기: lower-kebab-case
+- UI 표시 이름: `SFES Lab`
+- 코드 패키지 이름은 기존 Python 관례에 맞춰 `rpi.ui` 사용
 
-예:
-- `sf/gh1/sensors/snapshot`
-- `sf/gh2/actuators/fan-rpm`
+## 2. Greenhouse
 
-### 1.2 JSON key
-- 표기: lower_snake_case
-- 단위가 명확하면 suffix를 붙임
-  - `_c`: 섭씨
-  - `_pct`: 퍼센트
-  - `_ppm`: ppm
-  - `_rpm`: rpm
-  - `_ms`: milliseconds
-  - `_cmd`: command field
+현재 운영 대상은 `GH1`만 사용합니다.
 
-예:
-- `temp_pot_c`
-- `hum_top_pct`
-- `co2_ppm`
-- `vent_fan_rpm`
-- `window_1_cmd`
+표기 규칙:
 
-## 2. source 이름
-권장 값:
-- `rpi5_main`
-- `sensor_hub`
-- `weather_service`
-- `logger`
-- `ui`
-- `arduino_ctrl`
+- UI 표시: `GH1`
+- MQTT topic: `gh1`
+- DB 값: `gh1`
 
-## 3. 센서 키
-- `temp_pot_c`
-- `hum_pot_pct`
-- `temp_top_c`
-- `hum_top_pct`
-- `co2_ppm`
-- `par_w_m2`
-- `soil_moisture_1_pct`
-- `soil_moisture_2_pct`
-- `soil_moisture_3_pct`
-- `soil_moisture_4_pct`
-- `soil_moisture_5_pct`
-- `soil_moisture_6_pct`
+`gh2`는 현재 구현 대상에서 제외합니다. 다만 topic 구조는 나중 확장을 위해 `sf/gh1/...` 형태를 유지합니다.
 
-## 4. 외기 키
-- `region`
-- `outdoor_temp_c`
-- `outdoor_hum_pct`
+## 3. MQTT Topic
 
-## 5. 액추에이터 명령/상태 키
+형식:
 
-### 5.1 PWM 계열
-- `vent_fan_pwm_pct`
-- `circ_fan_1_pwm_pct`
-- `circ_fan_2_pwm_pct`
-- `heater_1_pwm_pct`
-- `heater_2_pwm_pct`
-- `pump_pwm_pct`
+```text
+sf/gh1/<domain>/<name>
+```
 
-### 5.2 ON/OFF 계열
-- `valve_pot_1_on`
-- `valve_pot_2_on`
-- `valve_pot_3_on`
-- `valve_pot_4_on`
-- `valve_pot_5_on`
-- `valve_pot_6_on`
-- `valve_fog_on`
-- `mist_on`
+예시:
 
-### 5.3 창문 계열
-- `window_1_cmd`
-- `window_2_cmd`
+```text
+sf/gh1/sensors/snapshot
+sf/gh1/actuators/cmd
+sf/gh1/actuators/heartbeat
+```
 
-허용 값:
-- `open`
-- `close`
-- `stop`
+규칙:
 
-### 5.4 LED 계열
-- `led_r`
-- `led_g`
-- `led_b`
-- `led_brightness_pct`
+- topic segment는 lower-kebab-case 사용
+- JSON key는 lower_snake_case 사용
 
-권장 범위:
-- `led_r`, `led_g`, `led_b`: `0..255`
-- `led_brightness_pct`: `0..100`
+## 4. Sensor Fields
 
-## 6. fan RPM 키
-- `vent_fan_rpm`
-- `circ_fan_1_rpm`
-- `circ_fan_2_rpm`
+```text
+temp_pot_c
+hum_pot_pct
+temp_top_c
+hum_top_pct
+co2_ppm
+par_w_m2
+soil_moisture_1_pct
+soil_moisture_2_pct
+soil_moisture_3_pct
+soil_moisture_4_pct
+soil_moisture_5_pct
+soil_moisture_6_pct
+```
 
-## 7. 일반 규칙
-- payload에 한국어 key를 사용하지 않음
-- 숫자 인덱스가 필요한 경우 1부터 시작
-  - 예: `soil_moisture_1_pct`
-- 배열보다 명시적 key를 우선 사용
-  - 예: `soil_moisture_1_pct` ... `soil_moisture_6_pct`
+## 5. Actuator Fields
 
-## 8. TODO
-- PAR 최종 단위가 바뀌면 `par_*` 네이밍 재검토
-- actuator state에 에러 코드 체계를 둘지 결정
+PWM:
+
+```text
+vent_fan_pwm_pct
+circ_fan_1_pwm_pct
+circ_fan_2_pwm_pct
+heater_1_pwm_pct
+heater_2_pwm_pct
+pump_pwm_pct
+```
+
+ON/OFF:
+
+```text
+valve_pot_1_on
+valve_pot_2_on
+valve_pot_3_on
+valve_pot_4_on
+valve_pot_5_on
+valve_pot_6_on
+valve_fog_on
+mist_on
+```
+
+Window:
+
+```text
+window_1_cmd
+window_2_cmd
+```
+
+허용값:
+
+```text
+open
+close
+stop
+```
+
+LED:
+
+```text
+led_r
+led_g
+led_b
+led_brightness_pct
+```
+
+## 6. DB File Name
+
+월별 DB 파일명:
+
+```text
+smartfarm_YYYY_MM.sqlite3
+```
+
+예시:
+
+```text
+smartfarm_2026_04.sqlite3
+```
+
+## 7. Source Names
+
+권장 source 값:
+
+```text
+rpi5_main
+sensor_hub
+weather_service
+logger
+ui
+arduino_node_1
+```
+
+## 8. Settings Keys
+
+```text
+ui_refresh_sec
+measurement_interval_sec
+heartbeat_timeout_sec
+monitoring_graph_minutes
+```
+
+## 9. 확인 필요
+
+- PAR 단위가 최종적으로 `W/m2`가 맞는지 확인 필요
+- 토양수분 값이 실제 `%` 변환 후 저장되는지 확인 필요
+
+## 10. ADS Channel Map
+
+물리 입력은 ADS1115 4개, 총 16채널입니다.
+
+| ADS address | Channel | 이름 |
+| --- | --- | --- |
+| `0x48` | `a0`..`a3` | active sensor channels |
+| `0x49` | `a0`..`a3` | active sensor channels |
+| `0x4a` | `a0`..`a3` | spare channels |
+| `0x4b` | `a0`..`a3` | active sensor channels |
+
+`0x4a`의 spare 채널은 향후 센서 확장용으로 예약합니다.

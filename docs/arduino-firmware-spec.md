@@ -1,178 +1,126 @@
 <!-- File: docs/arduino-firmware-spec.md -->
 # Arduino Firmware Specification
 
-대상 보드:
-- Arduino UNO R4 WiFi
+이 문서는 SmartFarm Arduino control node firmware의 역할과 MQTT 계약을 정의합니다.
 
-역할:
-- MQTT 액추에이터 명령 구독
-- 하드웨어 제어 수행
-- actuator state publish
-- heartbeat publish
+## 1. 기본 방향
 
-## 1. 토픽 연결
+- 현재 운영 대상은 `GH1`입니다.
+- Arduino는 actuator 제어와 heartbeat/state publish를 담당합니다.
+- Raspberry Pi는 UI, logger, sensor hub, weather service, supervisor/systemd를 담당합니다.
+- Arduino 재부팅은 MQTT topic이 아니라 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
 
-### 1.1 Subscribe
-- `sf/<gh>/actuators/cmd`
+## 2. MQTT 연결
 
-### 1.2 Publish
-- `sf/<gh>/actuators/state`
-- `sf/<gh>/actuators/heartbeat`
+Arduino control node는 아래 topic을 사용합니다.
 
-### 1.3 온실 구분
-- `<gh>`는 `gh1` 또는 `gh2`
-- 펌웨어는 같은 코드베이스를 사용하고, 온실 구분은 설정값으로 처리하는 것을 권장
+| Topic | 방향 | 목적 |
+| --- | --- | --- |
+| `sf/gh1/actuators/cmd` | subscribe | UI 제어 명령 수신 |
+| `sf/gh1/actuators/state` | publish | 실제 적용 상태 보고 |
+| `sf/gh1/actuators/heartbeat` | publish | online/offline 판단 |
+| `sf/gh1/actuators/fan-rpm` | publish | 팬 RPM 보고 |
 
-### 1.4 핀 배치 참고
-- 실제 핀 배치는 `docs/pin-map.md`를 참고합니다.
-- 이 문서는 기능 요구사항과 제어 원칙 중심으로 유지합니다.
+## 3. Command 처리
 
-## 2. 액추에이터 제어 요구사항
+`sf/gh1/actuators/cmd` payload는 JSON입니다. command에는 전체 actuator 값 또는 변경된 일부 값만 포함될 수 있습니다.
 
-### 2.1 PWM 제어
-1. 환기팬 1
-- 입력: `vent_fan_pwm_pct`
-- 범위: `0..100`
-- 출력: PWM duty `0..100%`
-- 현재 테스트 기준 주파수: `20kHz`
-- 최종 운영값은 펌웨어 통합 시 다시 확정 가능
+Firmware는 다음 규칙을 따릅니다.
 
-2. 순환팬 2
-- 입력:
-  - `circ_fan_1_pwm_pct`
-  - `circ_fan_2_pwm_pct`
-- 범위: `0..100`
-- 출력: PWM duty `0..100%`
-- 현재 테스트 기준 주파수: `20kHz`
-- 최종 운영값은 펌웨어 통합 시 다시 확정 가능
+- 수신한 key만 상태에 반영합니다.
+- PWM 값은 `0..100` 범위로 제한합니다.
+- ON/OFF 값은 boolean 또는 `0/1`로 처리합니다.
+- window command는 `open`, `close`, `stop`만 허용합니다.
+- 허용되지 않는 window command는 `stop`으로 처리합니다.
+- 명령 적용 후 `state` topic으로 결과를 publish합니다.
 
-3. 히터 2
-- 입력:
-  - `heater_1_pwm_pct`
-  - `heater_2_pwm_pct`
-- 범위: `0..100`
-- 출력: 2~5초 주기의 매우 느린 PWM
-- 사실상 ON/OFF에 가까운 제어
-- 현재 테스트 기준 윈도우: `5초`
-- 구현 권장:
-  - `delay()` 대신 `millis()` 기반 상태머신
+## 4. Actuator 대상
 
-4. 펌프 1
-- 입력: `pump_pwm_pct`
-- 범위: `0..100`
-- 출력: PWM duty `0..100%`
-- 초기 주파수: 기본값 사용 가능
+PWM 제어:
 
-### 2.2 ON/OFF 제어
-1. 솔레노이드 밸브 7
-- 입력:
-  - `valve_pot_1_on`
-  - `valve_pot_2_on`
-  - `valve_pot_3_on`
-  - `valve_pot_4_on`
-  - `valve_pot_5_on`
-  - `valve_pot_6_on`
-  - `valve_fog_on`
-- 동작:
-  - `true` -> HIGH
-  - `false` -> LOW
+- 환기팬
+- 순환팬 1
+- 순환팬 2
+- 히터 1
+- 히터 2
+- 펌프
 
-2. 초음파 미스트 1
-- 입력: `mist_on`
-- 동작:
-  - `true` -> HIGH
-  - `false` -> LOW
+ON/OFF 제어:
 
-### 2.3 창문 개폐기 2
-- 드라이버: L298N
-- 기본 제어 개념은 방향 제어 2핀 + enable 1핀 구조를 권장
-- 실제 핀 번호는 `docs/pin-map.md`에서 관리
-- 입력:
-  - `window_1_cmd`
-  - `window_2_cmd`
-- 명령:
-  - `open` -> `(1,0)`
-  - `close` -> `(0,1)`
-  - `stop` -> `(0,0)`
+- 화분 밸브 1..6
+- 포깅 밸브
+- 미스트
 
-### 2.4 LED
-- addressable LED strip
-- 입력:
-  - `led_r`
-  - `led_g`
-  - `led_b`
-  - `led_brightness_pct`
-- 현재 테스트 기준
-  - `Adafruit_NeoPixel` 라이브러리 사용
-  - WS2811 계열 addressable LED 방식으로 점검
-- 실제 LED 모델, 색 순서, 개수는 최종 하드웨어 기준으로 다시 확정
+창문 제어:
 
-### 2.5 차광스크린 (스텝모터)
-- 기능: 차광스크린 열기, 닫기, 정지
-- 입력: `shading_screen_cmd`
-- 명령:
-  - `open`: 스크린 열기 방향 회전
-  - `close`: 스크린 닫기 방향 회전
-  - `stop`: 회전 중지
-- 출력:
-  - `D10 (PUL)`: 펄스 신호 (이동 속도/거리 제어)
-  - `D11 (DIR)`: 방향 신호 (High/Low)
+- 창문 1
+- 창문 2
+- 명령: `open`, `close`, `stop`
 
-## 3. Fan RPM 측정
-- 측정 대상
-  - 환기팬 1
-  - 순환팬 2
-- publish topic
-  - `sf/<gh>/actuators/fan-rpm`
+LED 제어:
 
-### 3.1 전기적 주의
-- tach 출력은 오픈컬렉터/오픈드레인 가능성을 고려
-- 적절한 pull-up 필요
-- 12V로 pull-up되지 않도록 주의
-- 입력 전압은 보드 허용 범위 내로 유지
+- RGB
+- brightness
 
-### 3.2 측정 방식
-- 인터럽트 기반 펄스 카운트 또는 주기 측정 방식 권장
-- fan spec에 따른 PPR 값 확인 필요
-- 측정 결과는 `vent_fan_rpm`, `circ_fan_1_rpm`, `circ_fan_2_rpm`로 publish
+## 5. State publish
 
-## 4. Heartbeat
-- 주기적으로 `sf/<gh>/actuators/heartbeat` publish
-- 최소 포함 필드
-  - `ts`
-  - `source`
-  - `uptime_ms`
+명령을 적용한 뒤 Arduino는 `sf/gh1/actuators/state`에 실제 적용 상태를 publish합니다.
 
-## 5. State Publish
-- 명령 적용 후 `sf/<gh>/actuators/state` publish
-- 최소 포함 필드
-  - `ts`
-  - `source`
-  - `seq`
-  - `result`
-  - `errors`
-  - `applied`
+필수 필드:
 
-## 6. 안전 기본값(권장)
-부팅 직후 또는 통신 불안정 시 기본적으로 아래 상태를 권장합니다.
+- `ts`
+- `source`
+- `seq`
+- `result`
+- `errors`
+- `applied`
 
-- 팬 PWM = 0
-- 히터 PWM = 0
-- 펌프 PWM = 0
-- 모든 밸브 OFF
-- 미스트 OFF
-- 창문 = stop
-- LED OFF
+`seq`는 UI command와 Arduino state를 연결하는 값입니다.
 
-## 7. 안전 보강 항목(권장)
-- 히터가 켜질 때 대응 순환팬이 반드시 동작하도록 연동 검토
-- fan RPM이 비정상일 때 heater 차단 로직 검토
-- MQTT disconnect 시 안전 상태로 이동하는 정책 검토
-- invalid command 수신 시 무시하고 error 상태 publish
+## 6. Heartbeat
 
-## 8. TODO
-- Wi-Fi/MQTT 재연결 전략
-- LWT 사용 여부
-- 실제 배선도 문서
-- `20kHz` fan PWM과 `5초` heater window를 운영 기본값으로 유지할지 최종 확정
-- 실제 LED 모델(칩셋/색 순서/개수) 최종 확정
+Arduino는 주기적으로 `sf/gh1/actuators/heartbeat`를 publish합니다.
+
+권장 주기:
+
+- 5초
+
+UI는 마지막 heartbeat 수신 시각을 기준으로 LED 상태를 표시합니다.
+
+## 7. Fan RPM
+
+팬 RPM 측정이 가능한 경우 Arduino는 `sf/gh1/actuators/fan-rpm`을 publish합니다.
+
+대상:
+
+- `vent_fan_rpm`
+- `circ_fan_1_rpm`
+- `circ_fan_2_rpm`
+
+## 8. Reset
+
+운영 UI에는 Arduino reset 버튼이 있습니다.
+
+단, reset은 Arduino firmware가 자기 자신에게 MQTT 명령을 받아 수행하는 방식이 아니라 Raspberry Pi GPIO + 릴레이 helper가 수행합니다.
+
+권장 동작:
+
+- UI reset 버튼 클릭
+- UI/backend helper가 reset 요청 처리
+- Raspberry Pi GPIO가 릴레이를 짧게 제어
+- Arduino 전원 또는 reset line이 재시작됨
+- Arduino가 다시 WiFi/MQTT 연결 후 heartbeat publish
+
+## 9. 안전 규칙
+
+- 부팅 직후 actuator는 안전한 기본값으로 설정합니다.
+- MQTT 연결 전에도 actuator가 임의로 켜지지 않아야 합니다.
+- MQTT 연결이 끊겨도 마지막 상태 유지 또는 안전 상태 전환 정책을 명확히 해야 합니다.
+- heater/window/pump처럼 위험도가 있는 actuator는 테스트 단계에서 낮은 출력부터 확인합니다.
+
+## 10. 확인 필요
+
+- MQTT 연결 끊김 시 actuator 상태 유지 정책
+- window 개도율 계산 방식
+- fan RPM publish 주기
+- relay reset helper의 실제 회로와 GPIO 핀
