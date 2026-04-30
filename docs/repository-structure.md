@@ -1,141 +1,125 @@
 <!-- File: docs/repository-structure.md -->
 # Repository Structure
 
-이 문서는 현재 레포의 최소 구조와 향후 코드가 들어갈 위치를 설명합니다.
-목표는 "복잡하지 않게 시작하고, 필요한 만큼만 늘리는 것"입니다.
+이 문서는 SmartFarm 프로젝트의 폴더 역할을 정의합니다. 현재 목표 UI는 `SFES Lab`이며 Raspberry Pi에서 브라우저 전체 화면으로 실행합니다.
 
-## 1. 현재 최소 구조
+## 1. 현재 주요 구조
+
 ```text
 smartfarm/
-├─ AGENT.md
-├─ OWNER.md
-├─ README.md
-├─ .github/
-│  └─ pull_request_template.md
 ├─ docs/
-│  ├─ repository-structure.md
-│  ├─ mqtt-topics.md
 │  ├─ ui-spec.md
+│  ├─ db-schema.md
+│  ├─ mqtt-topics.md
 │  ├─ arduino-firmware-spec.md
-│  ├─ naming-conventions.md
-│  └─ json-schemas.md
+│  ├─ json-schemas.md
+│  └─ naming-conventions.md
 ├─ rpi/
-│  ├─ README.md
-│  ├─ sensor_hub/
 │  ├─ logger/
 │  ├─ ui/
-│  ├─ weather_service/
-│  └─ tests/
-│     ├─ README.md
-│     ├─ sensors/
-│     │  ├─ test_ads1115_basic.py
-│     │  ├─ test_temp_humidity_inputs.py
-│     │  ├─ test_co2_input.py
-│     │  ├─ test_par_input.py
-│     │  └─ test_soil_moisture_inputs.py
-│     ├─ actuators/
-│     │  ├─ test_rpi_gpio_relay_reset.py
-│     │  └─ test_mqtt_command_publish.py
-│     ├─ services/
-│     │  ├─ test_logger_write_sqlite.py
-│     │  ├─ test_weather_kma_fetch.py
-│     │  └─ test_ui_db_read_latest.py
-│     └─ integration/
-│        ├─ test_sensor_to_mqtt.py
-│        ├─ test_mqtt_to_sqlite.py
-│        └─ test_end_to_end_local.py
+│  ├─ tests/
+│  ├─ sensor_hub/          # planned
+│  ├─ weather_service/     # planned
+│  └─ supervisor/          # planned
 └─ arduino/
-   ├─ README.md
-   ├─ control_node/
+   ├─ control_node/        # planned
    └─ tests/
-      ├─ README.md
-      ├─ actuators/
-      │  ├─ test_vent_fan_pwm.ino
-      │  ├─ test_circ_fan_pwm.ino
-      │  ├─ test_heater_slow_pwm.ino
-      │  ├─ test_pump_pwm.ino
-      │  ├─ test_valves_onoff.ino
-      │  ├─ test_mist_onoff.ino
-      │  ├─ test_window_l298n.ino
-      │  └─ test_led_addressable.ino
-      ├─ sensors/
-      │  └─ test_fan_rpm_read.ino
-      ├─ mqtt/
-      │  ├─ test_mqtt_subscribe_cmd.ino
-      │  ├─ test_mqtt_publish_state.ino
-      │  └─ test_mqtt_publish_heartbeat.ino
-      └─ integration/
-         └─ test_full_control_node.ino
 ```
 
-## 2. 각 위치의 역할
-- `AGENT.md`
-  - 에이전트가 가장 먼저 읽는 짧은 안내서
-- `OWNER.md`
-  - 오너/운영자 관점의 메모
-- `README.md`
-  - GitHub 공개용 개요 문서
-- `.github/pull_request_template.md`
-  - PR 작성 템플릿과 안전 체크리스트
-- `docs/`
-  - 상세 스펙과 계약 문서
-- `rpi/`
-  - Raspberry Pi 관련 코드 위치
-- `arduino/`
-  - Arduino 관련 코드 위치
+## 2. Raspberry Pi 영역
 
-## 3. 코드가 들어갈 때 권장 구조
-현재는 최소 구조만 잡고, 실제 코드는 나중에 생성합니다.
-다만 아래와 같은 방향을 권장합니다.
+### `rpi/ui/`
 
-### 3.1 Raspberry Pi 코드
+`SFES Lab` UI 코드 위치입니다.
+
+역할:
+
+- 1024x600 기준 탭 UI 제공
+- 브라우저 전체 화면/kiosk 모드에서 사용
+- sensor, actuator, heartbeat, weather, graph 화면 제공
+- 화면 표시와 사용자 입력 처리 담당
+- Python 서비스 실행은 UI가 직접 하지 않고 supervisor/systemd가 담당
+
+### `rpi/logger/`
+
+MQTT 메시지를 받아 월별 SQLite DB에 저장하는 서비스 위치입니다.
+
+역할:
+
+- `sf/gh1/sensors/snapshot` 저장
+- `sf/gh1/sensors/weather` 저장
+- `sf/gh1/actuators/cmd` 저장
+- `sf/gh1/actuators/state` 저장
+- `sf/gh1/actuators/heartbeat` 저장
+- 월별 DB 파일 생성 및 전환
+
+### `rpi/sensor_hub/`
+
+ADS1115 센서값을 읽고 완성형 `sensor_snapshot` MQTT payload를 publish하는 코드 위치입니다.
+
+상태:
+
+- planned
+- 기존 테스트 코드에서 sensor read/publish 실험 코드가 있음
+
+### `rpi/weather_service/`
+
+외부 날씨 API를 조회하고 MQTT로 publish하는 코드 위치입니다.
+
+규칙:
+
+- 인터넷 접속 실패 시 서비스 전체를 죽이지 않음
+- 실패 시 weather publish를 생략하거나 빈 값을 publish
+
+### `rpi/supervisor/`
+
+여러 Python 프로그램을 함께 실행하고 감시하는 launcher/service 코드 위치입니다.
+
+상태:
+
+- planned
+- 향후 Raspberry Pi boot 자동 실행과 연결
+
+## 3. Arduino 영역
+
+### `arduino/control_node/`
+
+Arduino actuator 제어 firmware 위치입니다.
+
+역할:
+
+- `sf/gh1/actuators/cmd` subscribe
+- PWM/ON-OFF/window/LED 제어
+- `sf/gh1/actuators/state` publish
+- `sf/gh1/actuators/heartbeat` publish
+- 필요 시 fan RPM publish
+
+### `arduino/tests/`
+
+actuator, MQTT, fan RPM 단위 테스트 스케치 위치입니다.
+
+## 4. 운영 실행 구조
+
+최종 목표:
+
 ```text
-rpi/
-├─ README.md
-├─ sensor_hub/
-├─ logger/
-├─ ui/
-└─ weather_service/
+Raspberry Pi boot
+-> systemd starts SFES Lab supervisor
+-> supervisor starts MQTT broker check, logger, sensor_hub, weather_service, UI server
+-> browser opens SFES Lab in fullscreen/kiosk mode
 ```
 
-- `sensor_hub/`
-  - ADS1115 센서 수집
-  - MQTT publish
-- `logger/`
-  - MQTT subscribe
-  - SQLite 저장
-  - heartbeat 모니터링
-- `ui/`
-  - 웹 UI
-- `weather_service/`
-  - KMA API 수집
-  - MQTT publish
+초기 구현 단계:
 
-### 3.2 Arduino 코드
 ```text
-arduino/
-├─ README.md
-└─ control_node/
+python -m rpi.ui.app
+python -m rpi.logger.mqtt_logger
+sensor_hub script
+weather_service script
 ```
 
-- `control_node/`
-  - 제어 노드 펌웨어
-  - MQTT subscribe/publish
-  - RPM/heartbeat/state 처리
+## 5. 확인 필요
 
-## 4. 구조 설계 원칙
-- 코드 디렉터리는 "기능 단위"로 나눕니다.
-- `gh1`, `gh2`용 코드를 따로 복제하지 않습니다.
-- 온실 구분은 설정값 또는 topic namespace로 처리합니다.
-- 문서 수는 최소로 유지하되, 계약(MQTT/UI/펌웨어/네이밍)은 분리 문서로 유지합니다.
-
-## 5. 나중에 추가될 수 있는 파일
-필수는 아니지만, 구현이 진행되면 아래 파일이 생길 수 있습니다.
-
-- `.env.example`
-- `requirements.txt` 또는 `pyproject.toml`
-- `platformio.ini`
-- `systemd/` 서비스 파일
-- `scripts/` 배포/실행 스크립트
-
-필요할 때 추가하면 됩니다.
+- systemd service 파일을 repo에 포함할지 결정 필요
+- supervisor와 systemd service 구성 방식 확정 필요
+- 월별 DB 파일 저장 디렉터리 기본값 확정 필요

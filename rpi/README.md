@@ -1,34 +1,60 @@
 <!-- File: rpi/README.md -->
-# Raspberry Pi 영역
+# Raspberry Pi
 
-이 디렉터리는 Raspberry Pi 쪽 코드가 들어갈 위치입니다.
-현재는 최소 구조만 유지하고, 구현이 시작되면 필요한 디렉터리를 추가합니다.
+Raspberry Pi 영역의 코드 위치입니다. 현재 운영 대상은 `GH1`입니다.
 
-## 1. 이 디렉터리의 역할
-- 센서 수집
+## 1. 역할
+
+- ADS1115 센서 수집
 - MQTT publish/subscribe
-- SQLite 저장
-- 웹 UI
-- KMA 날씨 수집
-- Arduino 리셋용 GPIO 제어
+- 월별 SQLite 저장
+- `SFES Lab` UI 제공
+- 외부 날씨 수집
+- Arduino reset helper
+- supervisor/systemd 기반 프로세스 실행 관리
 
-## 2. 나중에 추가될 수 있는 하위 구조(권장)
+## 2. 권장 구조
+
 ```text
 rpi/
 ├─ README.md
 ├─ sensor_hub/
 ├─ logger/
 ├─ ui/
-└─ weather_service/
+├─ weather_service/
+├─ supervisor/
+└─ tests/
 ```
 
-## 3. 권장 설계 메모
-- `gh1`, `gh2`용 코드를 따로 복제하지 않습니다.
-- 온실 구분은 설정값 또는 MQTT topic namespace로 처리합니다.
-- logger를 별도 서비스로 두는 구조를 권장합니다.
-- UI는 DB의 최신값을 읽는 구조를 권장합니다.
+## 3. 실행 책임
 
-## 4. TODO
-- Python 프로젝트 초기화 방식 확정
-- requirements 또는 pyproject 선택
-- systemd 서비스 파일 구조 확정
+UI는 화면 표시와 사용자 입력만 담당합니다.
+
+백그라운드 프로그램 실행은 supervisor/systemd가 담당합니다.
+
+대상 프로세스:
+
+- sensor hub
+- MQTT logger
+- weather service
+- UI server
+- Arduino reset helper
+- browser kiosk launcher
+
+## 4. 센서 입력
+
+물리 ADS 입력은 ADS1115 4개, 총 16채널입니다.
+
+- `0x48/A0..A3`: active sensor channels
+- `0x49/A0..A3`: active sensor channels
+- `0x4a/A0..A3`: spare channels
+- `0x4b/A0..A3`: active sensor channels
+
+`0x4a` spare 채널은 향후 센서 확장용으로 예약합니다.
+
+## 5. 저장 정책
+
+- logger는 MQTT 수신 즉시 DB에 저장
+- DB 파일은 월별로 분리
+- 파일명 예시: `smartfarm_2026_04.sqlite3`
+- 설정 탭의 측정 주기는 sensor hub의 측정/publish 주기를 의미
