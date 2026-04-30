@@ -1,4 +1,5 @@
 import sqlite3
+import json
 
 
 CREATE_SENSOR_SNAPSHOT_TABLE_SQL = """
@@ -60,6 +61,38 @@ CREATE TABLE IF NOT EXISTS ads_reading (
 );
 """
 
+CREATE_ACTUATOR_LATEST_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS actuator_latest (
+    greenhouse      TEXT    PRIMARY KEY,
+    ts              TEXT    NOT NULL,
+    source          TEXT,
+    seq             INTEGER,
+    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
+    
+    vent_fan_pwm_pct     INTEGER,
+    circ_fan_1_pwm_pct   INTEGER,
+    circ_fan_2_pwm_pct   INTEGER,
+    heater_1_pwm_pct     INTEGER,
+    heater_2_pwm_pct     INTEGER,
+    pump_pwm_pct         INTEGER,
+    mist_on              BOOLEAN,
+    window_1_cmd         TEXT,
+    window_2_cmd         TEXT,
+    valve_pot_1_on       BOOLEAN,
+    valve_pot_2_on       BOOLEAN,
+    valve_pot_3_on       BOOLEAN,
+    valve_pot_4_on       BOOLEAN,
+    valve_pot_5_on       BOOLEAN,
+    valve_pot_6_on       BOOLEAN,
+    valve_fog_on         BOOLEAN,
+    led_r                INTEGER,
+    led_g                INTEGER,
+    led_b                INTEGER,
+    led_brightness_pct   INTEGER,
+    shading_screen_cmd   TEXT
+);
+"""
+
 CREATE_INDEXES_SQL = (
     "CREATE INDEX IF NOT EXISTS idx_sensor_snapshot_gh_ts ON sensor_snapshot (greenhouse, ts)",
     "CREATE INDEX IF NOT EXISTS idx_ads_reading_source_ts ON ads_reading (source, ts)",
@@ -91,6 +124,18 @@ def init_db(conn):
     conn.execute(CREATE_SENSOR_SNAPSHOT_TABLE_SQL)
     conn.execute(CREATE_SENSOR_LATEST_TABLE_SQL)
     conn.execute(CREATE_ADS_READING_TABLE_SQL)
+    conn.execute(CREATE_ACTUATOR_LATEST_TABLE_SQL)
+    # 액추에이터 이력 테이블도 생성 (필요시)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS actuator_history (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        greenhouse      TEXT    NOT NULL,
+        ts              TEXT    NOT NULL,
+        source          TEXT,
+        payload         TEXT,
+        received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours'))
+    );
+    """)
     for statement in CREATE_INDEXES_SQL:
         conn.execute(statement)
     conn.commit()
@@ -139,4 +184,64 @@ def insert_ads_reading(conn, reading):
             reading["value"],
         ),
     )
+    conn.commit()
+
+def insert_actuator_state(conn, greenhouse, payload):
+    # 1. 이력 저장
+    conn.execute(
+        "INSERT INTO actuator_history (greenhouse, ts, source, payload) VALUES (?, ?, ?, ?)",
+        (greenhouse, payload.get("ts"), payload.get("source"), json.dumps(payload))
+    )
+    
+    # 2. 최신 상태 업데이트
+    # 아두이노가 보낸 'applied' 객체 내의 값을 추출
+    applied = payload.get("applied", {})
+    if not applied: return
+    
+    # 현재 테이블의 컬럼 목록 확인 (greenhouse, ts, source, seq, received_at 제외)
+    fields = {
+        "ts": payload.get("ts"),
+        "source": payload.get("source"),
+        "seq": payload.get("seq"),
+        "vent_fan_pwm_pct": applied.get("vent_fan_pwm_pct"),
+        "circ_fan_1_pwm_pct": applied.get("circ_fan_1_pwm_pct"),
+        "circ_fan_2_pwm_pct": applied.get("circ_fan_2_pwm_pct"),
+        "heater_1_pwm_pct": applied.get("heater_1_pwm_pct"),
+        "heater_2_pwm_pct": applied.get("heater_2_pwm_pct"),
+        "pump_pwm_pct": applied.get("pump_pwm_pct"),
+        "mist_on": applied.get("mist_on"),
+        "window_1_cmd": applied.get("window_1_cmd"),
+        "window_2_cmd": applied.get("window_2_cmd"),
+        "valve_pot_1_on": applied.get("valve_pot_1_on"),
+        "valve_pot_2_on": applied.get("valve_pot_2_on"),
+        "valve_pot_3_on": applied.get("valve_pot_3_on"),
+        "valve_pot_4_on": applied.get("valve_pot_4_on"),
+        "valve_pot_5_on": applied.get("valve_pot_5_on"),
+        "valve_pot_6_on": applied.get("valve_pot_6_on"),
+        "valve_fog_on": applied.get("valve_fog_on"),
+        "led_r": applied.get("led_r"),
+        "led_g": applied.get("led_g"),
+        "led_b": applied.get("led_b"),
+        "led_brightness_pct": applied.get("led_brightness_pct"),
+        "shading_screen_cmd": applied.get("shading_screen_cmd")
+    }
+    
+    # NULL이 아닌 값들만 업데이트하기 위해 동적 쿼리 생성
+    # 하지만 REPLACE INTO를 쓰려면 전체 필드가 필요하므로, 기존 데이터를 가져와서 병합하는 것이 좋음
+    existing = conn.execute("SELECT * FROM actuator_latest WHERE greenhouse = ?", (greenhouse,)).fetchone()
+    
+    if existing:
+        # 기존 데이터와 병합 (새로 들어온 값이 None이 아니면 덮어씀)
+        new_data = dict(existing)
+        for k, v in fields.items():
+            if v is not None:
+                new_data[k] = v
+    else:
+        new_data = {"greenhouse": greenhouse}
+        new_data.update(fields)
+    
+    cols = ", ".join(new_data.keys())
+    placeholders = ", ".join("?" for _ in new_data)
+    conn.execute(f"REPLACE INTO actuator_latest ({cols}) VALUES ({placeholders})", list(new_data.values()))
+    
     conn.commit()
