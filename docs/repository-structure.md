@@ -22,7 +22,10 @@ smartfarm/
 │  ├─ mqtt-topics.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ json-schemas.md
-│  └─ naming-conventions.md
+│  ├─ naming-conventions.md
+│  ├─ pin-map.md
+│  ├─ repository-structure.md
+│  └─ environment-config.md
 ├─ rpi/
 │  ├─ README.md
 │  ├─ logger/
@@ -33,7 +36,8 @@ smartfarm/
 │  └─ supervisor/          # planned
 └─ arduino/
    ├─ README.md
-   ├─ control_node/        # planned
+   ├─ control_node_1/
+   ├─ control_node_2/
    └─ tests/
 ```
 
@@ -108,17 +112,32 @@ ADS1115 센서값을 읽고 완성형 `sensor_snapshot` MQTT payload를 publish�
 
 ## 4. Arduino 영역
 
-### `arduino/control_node/`
+### `arduino/control_node_1/`
 
-Arduino actuator 제어 firmware 위치입니다.
+Arduino Node 1 actuator 제어 firmware 위치입니다.
 
 역할:
 
 - `sf/gh1/actuators/cmd` subscribe
-- PWM/ON-OFF/window/LED 제어
+- 환기팬/히터/순환팬/펌프 PWM 제어
+- 미스트 ON/OFF 제어
+- 창문 1, 2 제어
 - `sf/gh1/actuators/state` publish
 - `sf/gh1/actuators/heartbeat` publish
 - 필요 시 fan RPM publish
+
+### `arduino/control_node_2/`
+
+Arduino Node 2 actuator 제어 firmware 위치입니다.
+
+역할:
+
+- `sf/gh1/actuators/cmd` subscribe
+- 솔레노이드 밸브 1..6, 포깅 밸브 ON/OFF 제어
+- LED (RGB + brightness) 제어
+- 차광스크린 (스텝모터 DM542) 제어
+- `sf/gh1/actuators/state` publish
+- `sf/gh1/actuators/heartbeat` publish
 
 ### `arduino/tests/`
 

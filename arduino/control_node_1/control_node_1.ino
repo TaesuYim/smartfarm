@@ -13,7 +13,7 @@ const int MQTT_PORT = 1883;
 
 const char* GH_ID = "gh1";
 
-IPAddress local_IP(192, 168, 5, 21);
+IPAddress local_IP(192, 168, 5, 91);
 IPAddress gateway(192, 168, 5, 1);
 IPAddress subnet(255, 255, 255, 0);
 

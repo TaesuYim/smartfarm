@@ -89,6 +89,7 @@ Window:
 ```text
 window_1_cmd
 window_2_cmd
+shading_screen_cmd
 ```
 
 허용값:
@@ -133,6 +134,7 @@ weather_service
 logger
 ui
 arduino_node_1
+arduino_node_2
 ```
 
 ## 8. Settings Keys

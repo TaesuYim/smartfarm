@@ -89,6 +89,7 @@ UI가 Arduino control node로 보내는 제어 명령입니다. 모든 key가 �
   "mist_on": true,
   "window_1_cmd": "stop",
   "window_2_cmd": "stop",
+  "shading_screen_cmd": "stop",
   "led_r": 255,
   "led_g": 255,
   "led_b": 255,
@@ -114,9 +115,21 @@ Arduino가 실제 적용 결과를 publish합니다.
     "heater_1_pwm_pct": 0,
     "heater_2_pwm_pct": 0,
     "pump_pwm_pct": 30,
+    "valve_pot_1_on": false,
+    "valve_pot_2_on": false,
+    "valve_pot_3_on": false,
+    "valve_pot_4_on": false,
+    "valve_pot_5_on": false,
+    "valve_pot_6_on": false,
+    "valve_fog_on": false,
     "mist_on": true,
     "window_1_cmd": "stop",
-    "window_2_cmd": "stop"
+    "window_2_cmd": "stop",
+    "shading_screen_cmd": "stop",
+    "led_r": 255,
+    "led_g": 255,
+    "led_b": 255,
+    "led_brightness_pct": 80
   }
 }
 ```
@@ -157,7 +170,7 @@ Arduino 재부팅은 현재 MQTT topic이 아니라 Raspberry Pi GPIO + 릴레�
 
 초기값:
 
-- sensors/state/heartbeat: QoS 0, retain false
+- actuators/heartbeat: QoS 0, retain false
 - actuator cmd: QoS 0 또는 1 후보, retain false 권장
 - weather: QoS 0, retain false
 

@@ -90,6 +90,7 @@ sf/gh1/actuators/cmd
 - `mist_on`: boolean
 - `window_1_cmd`: enum `open`, `close`, `stop`
 - `window_2_cmd`: enum `open`, `close`, `stop`
+- `shading_screen_cmd`: enum `open`, `close`, `stop`
 - `led_r`: integer `0..255`
 - `led_g`: integer `0..255`
 - `led_b`: integer `0..255`

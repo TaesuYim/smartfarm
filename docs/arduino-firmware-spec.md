@@ -6,7 +6,9 @@
 ## 1. 기본 방향
 
 - 현재 운영 대상은 `GH1`입니다.
-- Arduino는 actuator 제어와 heartbeat/state publish를 담당합니다.
+- Arduino control node는 2개 운용합니다.
+  - **Node 1** (`control_node_1`): 환기팬, 히터, 순환팬, 펌프, 미스트, 창문 제어
+  - **Node 2** (`control_node_2`): 솔레노이드 밸브, LED, 차광스크린(스텝모터) 제어
 - Raspberry Pi는 UI, logger, sensor hub, weather service, supervisor/systemd를 담당합니다.
 - Arduino 재부팅은 MQTT topic이 아니라 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
 
@@ -36,6 +38,8 @@ Firmware는 다음 규칙을 따릅니다.
 
 ## 4. Actuator 대상
 
+### Node 1 담당
+
 PWM 제어:
 
 - 환기팬
@@ -47,8 +51,6 @@ PWM 제어:
 
 ON/OFF 제어:
 
-- 화분 밸브 1..6
-- 포깅 밸브
 - 미스트
 
 창문 제어:
@@ -57,10 +59,22 @@ ON/OFF 제어:
 - 창문 2
 - 명령: `open`, `close`, `stop`
 
+### Node 2 담당
+
+ON/OFF 제어:
+
+- 화분 밸브 1..6
+- 포깅 밸브
+
 LED 제어:
 
 - RGB
 - brightness
+
+차광스크린 제어:
+
+- 스텝모터 (DM542 드라이버)
+- 명령: `open`, `close`, `stop`
 
 ## 5. State publish
 

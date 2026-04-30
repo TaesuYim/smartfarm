@@ -42,10 +42,12 @@ smartfarm_2026_05.sqlite3
 
 | 테이블 | MQTT topic | 목적 |
 | --- | --- | --- |
-| `sensor_snapshot` | `sf/gh1/sensors/snapshot` | 센서 완성형 스냅샷 |
+| `sensor_snapshot` | `sf/gh1/sensors/snapshot` | 센서 완성형 스냅샷 (이력) |
+| `sensor_latest` | 없음 (logger가 관리) | 센서 최신값 1행 (UI 조회용) |
 | `weather` | `sf/gh1/sensors/weather` | 외부 날씨 정보 |
 | `actuator_cmd` | `sf/gh1/actuators/cmd` | UI에서 보낸 제어 명령 |
-| `actuator_state` | `sf/gh1/actuators/state` | Arduino가 실제 적용한 상태 |
+| `actuator_history` | `sf/gh1/actuators/state` | Arduino 적용 상태 이력 (JSON payload 전체 저장) |
+| `actuator_latest` | 없음 (logger가 관리) | actuator 최신 상태 1행 (UI 조회용) |
 | `heartbeat` | `sf/gh1/actuators/heartbeat` | Arduino 생존 신호 |
 | `fan_rpm` | `sf/gh1/actuators/fan-rpm` | 팬 RPM |
 | `app_setting` | 없음 | UI/측정 주기 설정 |
@@ -149,45 +151,18 @@ CREATE TABLE IF NOT EXISTS actuator_cmd (
 );
 ```
 
-## 8. `actuator_state`
+## 8. `actuator_history`
 
-Arduino가 실제 적용한 결과를 저장합니다.
+Arduino가 실제 적용한 결과의 이력을 저장합니다. MQTT payload 전체를 JSON 문자열로 저장합니다.
 
 ```sql
-CREATE TABLE IF NOT EXISTS actuator_state (
+CREATE TABLE IF NOT EXISTS actuator_history (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    greenhouse      TEXT    NOT NULL DEFAULT 'gh1',
+    greenhouse      TEXT    NOT NULL,
     ts              TEXT    NOT NULL,
     source          TEXT,
-    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
-    seq             INTEGER,
-    result          TEXT,
-    errors          TEXT,
-
-    vent_fan_pwm_pct        INTEGER,
-    circ_fan_1_pwm_pct      INTEGER,
-    circ_fan_2_pwm_pct      INTEGER,
-    heater_1_pwm_pct        INTEGER,
-    heater_2_pwm_pct        INTEGER,
-    pump_pwm_pct            INTEGER,
-
-    valve_pot_1_on      INTEGER,
-    valve_pot_2_on      INTEGER,
-    valve_pot_3_on      INTEGER,
-    valve_pot_4_on      INTEGER,
-    valve_pot_5_on      INTEGER,
-    valve_pot_6_on      INTEGER,
-    valve_fog_on        INTEGER,
-    mist_on             INTEGER,
-
-    window_1_cmd    TEXT,
-    window_2_cmd    TEXT,
-    shading_screen_cmd  TEXT,
-
-    led_r               INTEGER,
-    led_g               INTEGER,
-    led_b               INTEGER,
-    led_brightness_pct  INTEGER
+    payload         TEXT,
+    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours'))
 );
 ```
 
@@ -286,59 +261,70 @@ CREATE INDEX IF NOT EXISTS idx_ads_reading_addr_channel_ts
     ON ads_reading (ads_address, channel, ts);
 ```
 
-## 14. 최신값 조회 view
+## 14. 최신값 전용 테이블
 
-UI에서 최신값 조회를 간단히 하기 위한 view입니다.
+UI에서 최신값을 빠르게 조회하기 위해 별도 테이블을 사용합니다. logger가 이력 테이블에 INSERT할 때 동시에 `REPLACE INTO`로 최신값 테이블을 갱신합니다. UI는 이 테이블만 읽습니다.
+
+### `sensor_latest`
+
+greenhouse당 1행만 유지됩니다. `sensor_snapshot`에 새 row가 들어올 때 logger가 함께 갱신합니다.
 
 ```sql
-CREATE VIEW IF NOT EXISTS latest_sensor_snapshot AS
-SELECT *
-FROM sensor_snapshot
-WHERE id = (
-    SELECT id FROM sensor_snapshot AS s2
-    WHERE s2.greenhouse = sensor_snapshot.greenhouse
-    ORDER BY s2.ts DESC
-    LIMIT 1
-);
+CREATE TABLE IF NOT EXISTS sensor_latest (
+    greenhouse      TEXT    PRIMARY KEY,
+    id              INTEGER,
+    ts              TEXT    NOT NULL,
+    source          TEXT,
+    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
 
-CREATE VIEW IF NOT EXISTS latest_weather AS
-SELECT *
-FROM weather
-WHERE id = (
-    SELECT id FROM weather AS w2
-    WHERE w2.greenhouse = weather.greenhouse
-    ORDER BY w2.ts DESC
-    LIMIT 1
+    temp_pot_c              REAL,
+    hum_pot_pct             REAL,
+    temp_top_c              REAL,
+    hum_top_pct             REAL,
+    co2_ppm                 REAL,
+    par_w_m2                REAL,
+    soil_moisture_1_pct     REAL,
+    soil_moisture_2_pct     REAL,
+    soil_moisture_3_pct     REAL,
+    soil_moisture_4_pct     REAL,
+    soil_moisture_5_pct     REAL,
+    soil_moisture_6_pct     REAL
 );
+```
 
-CREATE VIEW IF NOT EXISTS latest_actuator_state AS
-SELECT *
-FROM actuator_state
-WHERE id = (
-    SELECT id FROM actuator_state AS a2
-    WHERE a2.greenhouse = actuator_state.greenhouse
-    ORDER BY a2.ts DESC
-    LIMIT 1
-);
+### `actuator_latest`
 
-CREATE VIEW IF NOT EXISTS latest_heartbeat AS
-SELECT *
-FROM heartbeat
-WHERE id = (
-    SELECT id FROM heartbeat AS h2
-    WHERE h2.greenhouse = heartbeat.greenhouse
-    ORDER BY h2.ts DESC
-    LIMIT 1
-);
+greenhouse당 1행만 유지됩니다. `actuator_history`에 새 row가 들어올 때 logger가 `applied` 내부 값을 풀어서 기존 행과 병합(merge)한 뒤 갱신합니다. 새로 들어온 값이 `null`이 아닌 필드만 덮어씁니다.
 
-CREATE VIEW IF NOT EXISTS latest_fan_rpm AS
-SELECT *
-FROM fan_rpm
-WHERE id = (
-    SELECT id FROM fan_rpm AS f2
-    WHERE f2.greenhouse = fan_rpm.greenhouse
-    ORDER BY f2.ts DESC
-    LIMIT 1
+```sql
+CREATE TABLE IF NOT EXISTS actuator_latest (
+    greenhouse      TEXT    PRIMARY KEY,
+    ts              TEXT    NOT NULL,
+    source          TEXT,
+    seq             INTEGER,
+    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
+
+    vent_fan_pwm_pct     INTEGER,
+    circ_fan_1_pwm_pct   INTEGER,
+    circ_fan_2_pwm_pct   INTEGER,
+    heater_1_pwm_pct     INTEGER,
+    heater_2_pwm_pct     INTEGER,
+    pump_pwm_pct         INTEGER,
+    mist_on              BOOLEAN,
+    window_1_cmd         TEXT,
+    window_2_cmd         TEXT,
+    valve_pot_1_on       BOOLEAN,
+    valve_pot_2_on       BOOLEAN,
+    valve_pot_3_on       BOOLEAN,
+    valve_pot_4_on       BOOLEAN,
+    valve_pot_5_on       BOOLEAN,
+    valve_pot_6_on       BOOLEAN,
+    valve_fog_on         BOOLEAN,
+    led_r                INTEGER,
+    led_g                INTEGER,
+    led_b                INTEGER,
+    led_brightness_pct   INTEGER,
+    shading_screen_cmd   TEXT
 );
 ```
 
@@ -347,9 +333,11 @@ WHERE id = (
 | 테이블 | 권장 보존 기간 | 비고 |
 | --- | --- | --- |
 | `sensor_snapshot` | 90일 이상 | 과거 추세용 |
+| `sensor_latest` | 항상 유지 | greenhouse당 1행, 삭제 불필요 |
 | `weather` | 90일 이상 | 과거 추세용 |
 | `actuator_cmd` | 30일 이상 | 디버깅/감사용 |
-| `actuator_state` | 30일 이상 | 디버깅/감사용 |
+| `actuator_history` | 30일 이상 | 디버깅/감사용 |
+| `actuator_latest` | 항상 유지 | greenhouse당 1행, 삭제 불필요 |
 | `heartbeat` | 7일 이상 | online 판단용 |
 | `fan_rpm` | 30일 이상 | 모니터링용 |
 | `ads_reading` | 짧게 또는 선택 저장 | 디버깅용 |
