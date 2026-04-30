@@ -1,195 +1,170 @@
 <!-- File: docs/mqtt-topics.md -->
 # MQTT Topics
 
-현재 운영 대상은 `GH1`만 사용합니다. topic namespace는 확장 가능성을 위해 `gh1` segment를 유지합니다.
+이 문서는 SmartFarm MQTT topic과 payload 계약을 정의합니다. 현재 운영 대상은 `GH1` 1개이며 topic namespace는 향후 확장을 위해 `sf/gh1/...` 형식을 유지합니다.
 
 ## 1. 기본 규칙
 
-- topic prefix: `sf/gh1`
-- topic segment: lower-kebab-case
-- JSON key: lower_snake_case
-- UI 제어 명령은 `sf/gh1/actuators/cmd`로 publish
-- Arduino 상태와 heartbeat는 logger가 subscribe해서 DB에 저장
+- MQTT broker는 Raspberry Pi에서 실행하는 것을 기본으로 합니다.
+- topic은 모두 lower-case를 사용합니다.
+- payload는 JSON을 기본으로 합니다.
+- timestamp는 ISO 8601 문자열을 사용합니다.
+- logger는 MQTT 수신 즉시 월별 SQLite DB에 저장합니다.
+- 설정 탭의 측정 주기는 DB 저장 주기가 아니라 sensor hub publish 주기를 의미합니다.
 
 ## 2. Topic 목록
 
-| Topic | Publisher | Consumer | 목적 |
+| Topic | 방향 | 저장 테이블 | 목적 |
 | --- | --- | --- | --- |
-| `sf/gh1/sensors/snapshot` | sensor_hub | logger, UI | 완성형 센서 스냅샷 |
-| `sf/gh1/sensors/weather` | weather_service | logger, UI | 외부 날씨 정보 |
-| `sf/gh1/actuators/cmd` | SFES Lab UI | Arduino control node, logger | 제어 명령 |
-| `sf/gh1/actuators/state` | Arduino control node | logger, UI | 실제 적용 상태 |
-| `sf/gh1/actuators/heartbeat` | Arduino control node | logger, UI | 생존 신호 |
-| `sf/gh1/actuators/fan-rpm` | Arduino control node | logger, UI | 팬 RPM |
+| `sf/gh1/sensors/snapshot` | sensor hub -> broker | `sensor_snapshot` | 완성형 센서 스냅샷 |
+| `sf/gh1/sensors/weather` | weather service -> broker | `weather` | 외부 날씨 정보 |
+| `sf/gh1/actuators/cmd` | UI -> Arduino | `actuator_cmd` | actuator 제어 명령 |
+| `sf/gh1/actuators/state` | Arduino -> broker | `actuator_state` | 실제 적용 상태 |
+| `sf/gh1/actuators/heartbeat` | Arduino -> broker | `heartbeat` | Arduino 생존 신호 |
+| `sf/gh1/actuators/fan-rpm` | Arduino -> broker | `fan_rpm` | 팬 RPM |
+| `sensor/ads1115_*/+/raw` | sensor test -> broker | `ads_reading` | ADS raw 디버깅 |
+| `sensor/ads1115_*/+/voltage` | sensor test -> broker | `ads_reading` | ADS voltage 디버깅 |
 
-## 3. Sensor Snapshot
+`ads_reading` raw topic은 운영 UI의 기본 화면에는 표시하지 않고 디버깅/보정용으로 유지할 수 있습니다.
 
-Topic:
+## 3. `sf/gh1/sensors/snapshot`
 
-```text
-sf/gh1/sensors/snapshot
-```
-
-Payload:
+ADS1115 값을 변환한 완성형 센서 payload입니다.
 
 ```json
 {
-  "ts": "2026-04-30T12:00:00+09:00",
+  "ts": "2026-04-30T10:00:00+09:00",
   "source": "rpi5_main",
-  "temp_pot_c": 23.4,
-  "hum_pot_pct": 55.1,
-  "temp_top_c": 24.0,
-  "hum_top_pct": 52.0,
-  "co2_ppm": 830,
+  "temp_pot_c": 27.3,
+  "hum_pot_pct": 55.2,
+  "temp_top_c": 26.8,
+  "hum_top_pct": 57.1,
+  "co2_ppm": 820,
   "par_w_m2": 120.5,
-  "soil_moisture_1_pct": 31.2,
-  "soil_moisture_2_pct": 30.8,
-  "soil_moisture_3_pct": 29.9,
-  "soil_moisture_4_pct": 33.1,
-  "soil_moisture_5_pct": 28.7,
-  "soil_moisture_6_pct": 32.0
+  "soil_moisture_1_pct": 43.1,
+  "soil_moisture_2_pct": 44.0,
+  "soil_moisture_3_pct": 42.7,
+  "soil_moisture_4_pct": 45.2,
+  "soil_moisture_5_pct": 43.9,
+  "soil_moisture_6_pct": 41.8
 }
 ```
 
-Sensor hub input note:
+## 4. `sf/gh1/sensors/weather`
 
-- Physical ADS input count is 16 channels from four ADS1115 boards.
-- `0x4a/A0..A3` are reserved as spare channels.
-- Production `sensor_snapshot` publishes only converted sensor fields used by the UI.
-
-## 4. Weather
-
-Topic:
-
-```text
-sf/gh1/sensors/weather
-```
-
-Payload:
+외부 날씨 정보입니다. 인터넷/API 실패 시 publish를 생략하거나 값 일부를 `null`로 보낼 수 있습니다.
 
 ```json
 {
-  "ts": "2026-04-30T12:05:00+09:00",
+  "ts": "2026-04-30T10:00:00+09:00",
   "source": "weather_service",
-  "region": "Seoul",
-  "outdoor_temp_c": 18.2,
-  "outdoor_hum_pct": 43.0
+  "region": "local",
+  "outdoor_temp_c": 21.4,
+  "outdoor_hum_pct": 62.0
 }
 ```
 
-인터넷 접속 실패 시 weather publish를 생략해도 됩니다. UI는 값을 비워서 표시합니다.
+## 5. `sf/gh1/actuators/cmd`
 
-## 5. Actuator Command
-
-Topic:
-
-```text
-sf/gh1/actuators/cmd
-```
-
-Payload는 부분 업데이트를 허용합니다.
+UI가 Arduino control node로 보내는 제어 명령입니다. 모든 key가 항상 포함될 필요는 없고, 변경된 항목만 포함할 수 있습니다.
 
 ```json
 {
-  "ts": "2026-04-30T12:01:00+09:00",
-  "source": "ui",
-  "seq": 101,
-  "vent_fan_pwm_pct": 60,
+  "ts": "2026-04-30T10:00:00+09:00",
+  "source": "sfes_lab_ui",
+  "seq": 1001,
+  "vent_fan_pwm_pct": 50,
   "circ_fan_1_pwm_pct": 40,
   "circ_fan_2_pwm_pct": 40,
-  "heater_1_pwm_pct": 50,
+  "heater_1_pwm_pct": 0,
   "heater_2_pwm_pct": 0,
   "pump_pwm_pct": 30,
-  "valve_pot_1_on": true,
+  "valve_pot_1_on": false,
   "valve_pot_2_on": false,
   "valve_pot_3_on": false,
   "valve_pot_4_on": false,
   "valve_pot_5_on": false,
   "valve_pot_6_on": false,
   "valve_fog_on": false,
-  "mist_on": false,
+  "mist_on": true,
   "window_1_cmd": "stop",
-  "window_2_cmd": "close",
-  "led_r": 80,
-  "led_g": 30,
-  "led_b": 0,
-  "led_brightness_pct": 60
+  "window_2_cmd": "stop",
+  "led_r": 255,
+  "led_g": 255,
+  "led_b": 255,
+  "led_brightness_pct": 80
 }
 ```
 
-## 6. Actuator State
+## 6. `sf/gh1/actuators/state`
 
-Topic:
-
-```text
-sf/gh1/actuators/state
-```
-
-Payload:
+Arduino가 실제 적용 결과를 publish합니다.
 
 ```json
 {
-  "ts": "2026-04-30T12:01:01+09:00",
+  "ts": "2026-04-30T10:00:01+09:00",
   "source": "arduino_node_1",
-  "seq": 101,
+  "seq": 1001,
   "result": "ok",
   "errors": [],
   "applied": {
-    "vent_fan_pwm_pct": 60,
+    "vent_fan_pwm_pct": 50,
     "circ_fan_1_pwm_pct": 40,
     "circ_fan_2_pwm_pct": 40,
-    "heater_1_pwm_pct": 50,
+    "heater_1_pwm_pct": 0,
     "heater_2_pwm_pct": 0,
     "pump_pwm_pct": 30,
-    "mist_on": false,
+    "mist_on": true,
     "window_1_cmd": "stop",
-    "window_2_cmd": "close"
+    "window_2_cmd": "stop"
   }
 }
 ```
 
-## 7. Heartbeat
+## 7. `sf/gh1/actuators/heartbeat`
 
-Topic:
-
-```text
-sf/gh1/actuators/heartbeat
-```
-
-Payload:
+Arduino online/offline 판단용 신호입니다.
 
 ```json
 {
-  "ts": "2026-04-30T12:01:05+09:00",
+  "ts": "2026-04-30T10:00:00+09:00",
   "source": "arduino_node_1",
-  "uptime_ms": 1234567
+  "uptime_ms": 123456
 }
 ```
 
-UI는 마지막 heartbeat 시간이 기준 시간보다 오래되면 LED를 OFF로 표시합니다.
+## 8. `sf/gh1/actuators/fan-rpm`
 
-## 8. Fan RPM
-
-Topic:
-
-```text
-sf/gh1/actuators/fan-rpm
-```
-
-Payload:
+팬 RPM 측정값입니다.
 
 ```json
 {
-  "ts": "2026-04-30T12:01:05+09:00",
+  "ts": "2026-04-30T10:00:00+09:00",
   "source": "arduino_node_1",
-  "vent_fan_rpm": 1250,
-  "circ_fan_1_rpm": 1100,
-  "circ_fan_2_rpm": 1120
+  "vent_fan_rpm": 1800,
+  "circ_fan_1_rpm": 1500,
+  "circ_fan_2_rpm": 1490
 }
 ```
 
-## 9. 확인 필요
+## 9. Arduino reset
 
-- `ads_reading` raw topic은 디버깅용으로 유지할지 결정 필요
+Arduino 재부팅은 현재 MQTT topic이 아니라 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
+
+운영 UI에서는 reset 버튼을 제공하지만, 실제 GPIO 제어는 UI 프로세스가 직접 하지 않고 별도 helper 또는 system service가 담당합니다.
+
+## 10. QoS/retain 정책
+
+초기값:
+
+- sensors/state/heartbeat: QoS 0, retain false
+- actuator cmd: QoS 0 또는 1 후보, retain false 권장
+- weather: QoS 0, retain false
+
+최종 정책은 운영 테스트 후 확정합니다.
+
+## 11. 확인 필요
+
+- `ads_reading` raw topic을 운영 배포 후에도 유지할지 결정 필요
 - command publish QoS/retain 정책 확정 필요
-- Arduino reset 명령을 MQTT topic으로 처리할지, Raspberry Pi GPIO helper API로 처리할지 결정 필요
+- GPIO reset helper를 로컬 서비스로 둘지, 별도 HTTP API 형태로 둘지 구현 방식 확정 필요

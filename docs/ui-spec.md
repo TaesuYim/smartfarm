@@ -8,7 +8,7 @@
 - UI 이름: `SFES Lab`
 - 대상 화면: Raspberry Pi 모니터 기준 `1024x600`
 - 다른 해상도에서도 깨지지 않도록 반응형으로 구현
-- 브라우저 전체 화면 사용
+- 브라우저 전체 화면 또는 kiosk 모드 사용
 - 긴 단일 페이지가 아니라 탭 기반 화면 구성
 - 현재 운용 대상 온실은 `GH1`만 사용
 - UI는 화면 표시와 사용자 입력만 담당
@@ -28,7 +28,17 @@
 | 그래프 | 사용자가 선택한 기간의 DB 추세 분석 |
 | 설정 | 화면 업데이트 주기와 센서 측정 주기 설정 |
 
-## 3. 모니터링 탭
+## 3. 공통 정책
+
+- 화면 어디서든 현재 날짜/시간 표시
+- 각 탭별로 마지막 업데이트 시간 1개 표시
+- 각 센서값마다 개별 업데이트 시간을 표시하지 않음
+- UI는 SQLite의 최신값/과거값을 읽어 표시
+- 제어 입력은 MQTT command로 publish
+- 날씨 정보도 가능하면 logger를 통해 DB에 저장된 값을 표시
+- 기준 운영 대상은 `GH1` 1개이며, topic 구조는 `sf/gh1/...`를 유지
+
+## 4. 모니터링 탭
 
 모니터링 탭은 실시간 현황을 한 화면에서 빠르게 확인하는 화면입니다.
 
@@ -40,6 +50,14 @@
 - Arduino 리셋 버튼
 - 날씨 정보 표시
 
+표시 대상 센서 항목:
+
+- 온도 2개
+- 습도 2개
+- CO2 1개
+- PAR 1개
+- 토양수분 6개
+
 Heartbeat 표시:
 
 - LED 형태로 표시
@@ -50,7 +68,8 @@ Heartbeat 표시:
 Arduino 리셋:
 
 - UI에서 리셋 버튼 제공
-- 실제 구현 방식은 Raspberry Pi GPIO 릴레이 또는 별도 reset service로 처리
+- 실제 구현은 Raspberry Pi GPIO + 릴레이 helper 또는 별도 reset service로 처리
+- press-and-hold는 필수 아님
 - 리셋 실행 전 확인 동작을 넣어 오작동을 방지
 
 날씨 정보:
@@ -59,7 +78,7 @@ Arduino 리셋:
 - 인터넷 접속 실패 또는 API 실패 시 UI를 멈추지 않음
 - 실패 시 날씨 값은 비워두고 나머지 센서/제어 화면은 정상 동작
 
-## 4. 제어 탭
+## 5. 제어 탭
 
 제어 탭은 UI에서 actuator 값을 변경하고 MQTT command를 발행하는 화면입니다.
 
@@ -71,6 +90,18 @@ Arduino 리셋:
 - window 제어는 `open`, `close`, `stop` 선택 방식 사용
 - LED 제어가 포함될 경우 RGB와 brightness 입력 제공
 
+제어 대상 예시:
+
+- 환기팬
+- 히터
+- 순환팬
+- 펌프
+- 솔레노이드 밸브
+- 미스트
+- 창문 1, 2
+- 필요 시 LED
+- 필요 시 팬 RPM 표시
+
 제어값 저장:
 
 - 사용자가 제어값을 변경하면 MQTT command를 publish
@@ -78,7 +109,7 @@ Arduino 리셋:
 - 저장 대상은 `actuator_cmd` 테이블
 - Arduino가 실제 적용 상태를 publish하면 `actuator_state` 테이블에 저장
 
-## 5. 그래프 탭
+## 6. 그래프 탭
 
 그래프 탭은 과거 DB 데이터를 기간 기준으로 조회하는 화면입니다.
 
@@ -89,9 +120,16 @@ Arduino 리셋:
 - 온도, 습도, CO2, PAR, 토양수분을 선택해서 볼 수 있는 구조
 - 데이터가 없는 기간은 빈 그래프로 표시하고 UI는 멈추지 않음
 
-## 6. 설정 탭
+권장 그래프 그룹:
 
-설정 탭은 UI와 저장 동작의 주기를 조정하는 화면입니다.
+- 온도 그래프: 내부 온도 + 외기온도
+- 습도 그래프: 내부 습도 + 외기습도
+- 토양수분 그래프
+- 필요 시 CO2/PAR 개별 그래프
+
+## 7. 설정 탭
+
+설정 탭은 UI와 측정 동작의 주기를 조정하는 화면입니다.
 
 설정 항목:
 
@@ -106,14 +144,15 @@ Arduino 리셋:
 - 설정 탭의 주기는 DB 저장 주기가 아니라 sensor hub의 측정/publish 주기를 의미
 - 측정 주기 변경은 sensor hub 설정에 반영되어야 함
 
-## 7. 데이터 흐름
+## 8. 데이터 흐름
 
 기본 흐름:
 
 ```text
 sensor_hub -> MQTT -> logger -> monthly SQLite DB -> SFES Lab UI
 SFES Lab UI -> MQTT command -> Arduino control node
-Arduino control node -> MQTT state/heartbeat -> logger -> monthly SQLite DB
+Arduino control node -> MQTT state/heartbeat/RPM -> logger -> monthly SQLite DB
+weather_service -> MQTT -> logger -> monthly SQLite DB -> SFES Lab UI
 ```
 
 supervisor/systemd가 함께 실행할 프로그램 후보:
@@ -123,10 +162,12 @@ supervisor/systemd가 함께 실행할 프로그램 후보:
 - weather service
 - Arduino reset helper
 - local MQTT broker 상태 확인 helper
+- UI server
+- kiosk browser launcher
 
 UI 자체는 위 프로세스들을 직접 subprocess로 실행하지 않습니다.
 
-## 8. 반응형 요구사항
+## 9. 반응형 요구사항
 
 기준 해상도는 `1024x600`입니다.
 
@@ -137,7 +178,7 @@ UI 자체는 위 프로세스들을 직접 subprocess로 실행하지 않습니�
 - 더 큰 화면에서는 카드/그래프 영역을 넓게 확장
 - 버튼, 토글, 슬라이더는 터치 가능한 크기로 유지
 
-## 9. 전체 화면 실행
+## 10. 전체 화면 실행
 
 운영 시 Raspberry Pi 브라우저는 전체 화면 또는 kiosk 모드로 실행합니다.
 
@@ -149,11 +190,15 @@ chromium-browser --kiosk http://127.0.0.1:8000
 
 정확한 실행 명령은 Raspberry Pi OS와 설치된 브라우저에 맞춰 조정합니다.
 
-## 10. 확인 필요
+## 11. 상태/에러 표시 권장사항
 
-아래 항목은 기존 문서/코드와 요구사항이 달라 구현 전에 확인이 필요합니다.
+- Arduino online/offline 표시 권장
+- 마지막 actuator state 수신 여부 표시 권장
+- weather 데이터 미수신 시 경고 또는 빈 상태 표시 권장
+- MQTT broker 연결 상태 표시 권장
 
-- 기존 문서는 `gh1`, `gh2`를 모두 고려했지만, 새 요구사항은 `GH1`만 사용
+## 12. 확인 필요
+
 - 기존 DB는 단일 `smartfarm.sqlite3`였지만, 새 요구사항은 월별 DB 파일 분리
 - 설정 탭의 저장 관련 주기는 실제로는 sensor hub 측정/publish 주기임
 - UI는 화면만 담당하고 프로세스 실행/재시작은 supervisor/systemd가 담당

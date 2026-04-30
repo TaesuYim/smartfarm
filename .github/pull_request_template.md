@@ -4,7 +4,7 @@
 - 왜 변경했는지 적어주세요.
 
 ## 관련 문서
-- [ ] AGENT.md 확인
+- [ ] .agents/rules/ 확인
 - [ ] docs/mqtt-topics.md 확인
 - [ ] docs/ui-spec.md 확인
 - [ ] docs/arduino-firmware-spec.md 확인

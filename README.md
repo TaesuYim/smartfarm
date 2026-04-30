@@ -21,14 +21,17 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
   - actuator state publish
 
 ## 2. 핵심 문서
-- [AGENT.md](AGENT.md)
-  - 에이전트용 최상위 안내서
+- `.agents/rules/` — AI 에이전트 규칙 (자동 로드)
 - [docs/repository-structure.md](docs/repository-structure.md)
   - 현재 레포 구조와 향후 코드 배치 방향
 - [docs/mqtt-topics.md](docs/mqtt-topics.md)
   - MQTT 토픽 구조와 payload 예시
 - [docs/ui-spec.md](docs/ui-spec.md)
   - UI 요구사항
+- [docs/db-schema.md](docs/db-schema.md)
+  - SQLite DB 스키마 초안
+- [docs/pin-map.md](docs/pin-map.md)
+  - ADS1115 주소/채널과 Arduino 핀 배치
 - [docs/arduino-firmware-spec.md](docs/arduino-firmware-spec.md)
   - Arduino 펌웨어 요구사항
 - [OWNER.md](OWNER.md)
@@ -49,25 +52,39 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
 
 자세한 내용은 [docs/mqtt-topics.md](docs/mqtt-topics.md)를 참고하세요.
 
-## 4. 최소 레포 구조
+## 4. 현재 레포 구조(요약)
 ```text
 smartfarm/
-├─ AGENT.md
 ├─ OWNER.md
 ├─ README.md
+├─ .agents/
+│  └─ rules/
+│     ├─ 01-project-overview.md
+│     ├─ 02-docs-first.md
+│     └─ 03-safety.md
 ├─ .github/
 │  └─ pull_request_template.md
 ├─ docs/
 │  ├─ repository-structure.md
 │  ├─ mqtt-topics.md
 │  ├─ ui-spec.md
+│  ├─ db-schema.md
+│  ├─ pin-map.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ naming-conventions.md
 │  └─ json-schemas.md
 ├─ rpi/
-│  └─ README.md
+│  ├─ README.md
+│  ├─ requirements.txt
+│  ├─ sensor_hub/
+│  ├─ logger/
+│  ├─ ui/
+│  ├─ weather_service/
+│  └─ tests/
 └─ arduino/
-   └─ README.md
+   ├─ README.md
+   ├─ control_node/
+   └─ tests/
 ```
 
 ## 5. 개발 흐름
@@ -84,6 +101,8 @@ smartfarm/
   - UI 동작 변경
   - 히터, 모터, 릴레이, 펌프 관련 안전 변경
   - Arduino state/heartbeat/RPM 동작 변경
+  - DB 스키마 초안 변경
+  - 핀맵 변경
 
 ## 7. 안전 주의
 이 프로젝트는 히터, 모터, 펌프, 솔레노이드 밸브, 릴레이를 포함합니다.

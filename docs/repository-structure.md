@@ -7,6 +7,15 @@
 
 ```text
 smartfarm/
+├─ OWNER.md
+├─ README.md
+├─ .agents/
+│  └─ rules/
+│     ├─ 01-project-overview.md
+│     ├─ 02-docs-first.md
+│     └─ 03-safety.md
+├─ .github/
+│  └─ pull_request_template.md
 ├─ docs/
 │  ├─ ui-spec.md
 │  ├─ db-schema.md
@@ -15,6 +24,7 @@ smartfarm/
 │  ├─ json-schemas.md
 │  └─ naming-conventions.md
 ├─ rpi/
+│  ├─ README.md
 │  ├─ logger/
 │  ├─ ui/
 │  ├─ tests/
@@ -22,11 +32,22 @@ smartfarm/
 │  ├─ weather_service/     # planned
 │  └─ supervisor/          # planned
 └─ arduino/
+   ├─ README.md
    ├─ control_node/        # planned
    └─ tests/
 ```
 
-## 2. Raspberry Pi 영역
+## 2. 각 위치의 역할
+
+- `.agents/rules/`: AI 에이전트 규칙
+- `OWNER.md`: 오너/운영자 관점의 메모
+- `README.md`: GitHub 공개용 개요 문서
+- `.github/pull_request_template.md`: PR 작성 템플릿과 안전 체크리스트
+- `docs/`: 상세 스펙과 계약 문서
+- `rpi/`: Raspberry Pi 관련 코드 위치
+- `arduino/`: Arduino 관련 코드 위치
+
+## 3. Raspberry Pi 영역
 
 ### `rpi/ui/`
 
@@ -51,6 +72,7 @@ MQTT 메시지를 받아 월별 SQLite DB에 저장하는 서비스 위치입니
 - `sf/gh1/actuators/cmd` 저장
 - `sf/gh1/actuators/state` 저장
 - `sf/gh1/actuators/heartbeat` 저장
+- `sf/gh1/actuators/fan-rpm` 저장
 - 월별 DB 파일 생성 및 전환
 
 ### `rpi/sensor_hub/`
@@ -80,7 +102,11 @@ ADS1115 센서값을 읽고 완성형 `sensor_snapshot` MQTT payload를 publish�
 - planned
 - 향후 Raspberry Pi boot 자동 실행과 연결
 
-## 3. Arduino 영역
+### `rpi/tests/`
+
+센서, GPIO, MQTT, 서비스 흐름 점검용 테스트 코드 위치입니다.
+
+## 4. Arduino 영역
 
 ### `arduino/control_node/`
 
@@ -98,7 +124,7 @@ Arduino actuator 제어 firmware 위치입니다.
 
 actuator, MQTT, fan RPM 단위 테스트 스케치 위치입니다.
 
-## 4. 운영 실행 구조
+## 5. 운영 실행 구조
 
 최종 목표:
 
@@ -118,8 +144,24 @@ sensor_hub script
 weather_service script
 ```
 
-## 5. 확인 필요
+## 6. 구조 설계 원칙
 
-- systemd service 파일을 repo에 포함할지 결정 필요
-- supervisor와 systemd service 구성 방식 확정 필요
-- 월별 DB 파일 저장 디렉터리 기본값 확정 필요
+- 코드 디렉터리는 기능 단위로 나눕니다.
+- 현재 운영 대상은 `GH1`만 사용합니다.
+- topic 구조는 향후 확장을 위해 `sf/gh1/...` 형식을 유지합니다.
+- `gh1`, `gh2`용 코드를 따로 복제하지 않습니다.
+- 문서는 최소 개수로 유지하되 MQTT, UI, DB, 핀맵, 펌웨어, 네이밍 규칙은 분리 문서로 유지합니다.
+
+## 7. 현재/추후 추가될 수 있는 파일
+
+- `.env.example`
+- `pyproject.toml`
+- `platformio.ini`
+- `systemd/` 서비스 파일
+- `scripts/` 배포/실행 스크립트
+
+## 8. 확인 필요
+
+- systemd와 supervisor의 경계
+- Raspberry Pi boot 자동 실행 순서
+- 운영 DB 경로와 백업 방식

@@ -1,150 +1,126 @@
 <!-- File: docs/arduino-firmware-spec.md -->
 # Arduino Firmware Specification
 
-Arduino UNO R4 WiFi 기반 actuator control node의 요구사항입니다. 현재 운영 대상은 `GH1`입니다.
+이 문서는 SmartFarm Arduino control node firmware의 역할과 MQTT 계약을 정의합니다.
 
-## 1. MQTT 연결
+## 1. 기본 방향
 
-Subscribe:
+- 현재 운영 대상은 `GH1`입니다.
+- Arduino는 actuator 제어와 heartbeat/state publish를 담당합니다.
+- Raspberry Pi는 UI, logger, sensor hub, weather service, supervisor/systemd를 담당합니다.
+- Arduino 재부팅은 MQTT topic이 아니라 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
 
-```text
-sf/gh1/actuators/cmd
-```
+## 2. MQTT 연결
 
-Publish:
+Arduino control node는 아래 topic을 사용합니다.
 
-```text
-sf/gh1/actuators/state
-sf/gh1/actuators/heartbeat
-sf/gh1/actuators/fan-rpm
-```
-
-권장 source:
-
-```text
-arduino_node_1
-```
-
-## 2. PWM 제어
-
-| 장치 | 입력 key | 범위 | 비고 |
-| --- | --- | --- | --- |
-| 환기팬 | `vent_fan_pwm_pct` | `0..100` | 고주파 PWM |
-| 순환팬 1 | `circ_fan_1_pwm_pct` | `0..100` | 고주파 PWM |
-| 순환팬 2 | `circ_fan_2_pwm_pct` | `0..100` | 고주파 PWM |
-| 히터 1 | `heater_1_pwm_pct` | `0..100` | `millis()` 기반 slow PWM |
-| 히터 2 | `heater_2_pwm_pct` | `0..100` | `millis()` 기반 slow PWM |
-| 펌프 | `pump_pwm_pct` | `0..100` | PWM |
-
-## 3. ON/OFF 제어
-
-| 장치 | 입력 key | 동작 |
+| Topic | 방향 | 목적 |
 | --- | --- | --- |
-| 포트 밸브 1 | `valve_pot_1_on` | `true` = ON |
-| 포트 밸브 2 | `valve_pot_2_on` | `true` = ON |
-| 포트 밸브 3 | `valve_pot_3_on` | `true` = ON |
-| 포트 밸브 4 | `valve_pot_4_on` | `true` = ON |
-| 포트 밸브 5 | `valve_pot_5_on` | `true` = ON |
-| 포트 밸브 6 | `valve_pot_6_on` | `true` = ON |
-| 포그 밸브 | `valve_fog_on` | `true` = ON |
-| 미스트 | `mist_on` | `true` = ON |
+| `sf/gh1/actuators/cmd` | subscribe | UI 제어 명령 수신 |
+| `sf/gh1/actuators/state` | publish | 실제 적용 상태 보고 |
+| `sf/gh1/actuators/heartbeat` | publish | online/offline 판단 |
+| `sf/gh1/actuators/fan-rpm` | publish | 팬 RPM 보고 |
 
-## 4. Window 제어
+## 3. Command 처리
 
-입력:
+`sf/gh1/actuators/cmd` payload는 JSON입니다. command에는 전체 actuator 값 또는 변경된 일부 값만 포함될 수 있습니다.
 
-```text
-window_1_cmd
-window_2_cmd
-```
+Firmware는 다음 규칙을 따릅니다.
 
-허용값:
+- 수신한 key만 상태에 반영합니다.
+- PWM 값은 `0..100` 범위로 제한합니다.
+- ON/OFF 값은 boolean 또는 `0/1`로 처리합니다.
+- window command는 `open`, `close`, `stop`만 허용합니다.
+- 허용되지 않는 window command는 `stop`으로 처리합니다.
+- 명령 적용 후 `state` topic으로 결과를 publish합니다.
 
-```text
-open
-close
-stop
-```
+## 4. Actuator 대상
 
-L298N 기준 동작:
+PWM 제어:
 
-| 명령 | IN1 | IN2 |
-| --- | --- | --- |
-| `open` | HIGH | LOW |
-| `close` | LOW | HIGH |
-| `stop` | LOW | LOW |
+- 환기팬
+- 순환팬 1
+- 순환팬 2
+- 히터 1
+- 히터 2
+- 펌프
 
-## 5. LED 제어
+ON/OFF 제어:
 
-입력:
+- 화분 밸브 1..6
+- 포깅 밸브
+- 미스트
 
-```text
-led_r
-led_g
-led_b
-led_brightness_pct
-```
+창문 제어:
 
-값 범위:
+- 창문 1
+- 창문 2
+- 명령: `open`, `close`, `stop`
 
-- `led_r`, `led_g`, `led_b`: `0..255`
-- `led_brightness_pct`: `0..100`
+LED 제어:
 
-## 6. Heartbeat
+- RGB
+- brightness
 
-Arduino는 주기적으로 heartbeat를 publish합니다.
+## 5. State publish
 
-Topic:
-
-```text
-sf/gh1/actuators/heartbeat
-```
-
-Payload:
-
-```json
-{
-  "ts": "",
-  "source": "arduino_node_1",
-  "uptime_ms": 1234567
-}
-```
-
-UI는 이 신호를 LED 형태로 표시합니다.
-
-## 7. State Publish
-
-명령 적용 후 Arduino는 실제 적용 상태를 publish합니다.
-
-Topic:
-
-```text
-sf/gh1/actuators/state
-```
+명령을 적용한 뒤 Arduino는 `sf/gh1/actuators/state`에 실제 적용 상태를 publish합니다.
 
 필수 필드:
 
-```text
-ts
-source
-seq
-result
-errors
-applied
-```
+- `ts`
+- `source`
+- `seq`
+- `result`
+- `errors`
+- `applied`
 
-## 8. 안전 기본값
+`seq`는 UI command와 Arduino state를 연결하는 값입니다.
 
-부팅 직후 또는 통신 불안정 시 기본 상태:
+## 6. Heartbeat
 
-- 모든 PWM = 0
-- 모든 밸브 OFF
-- 미스트 OFF
-- 창문 = `stop`
-- LED OFF
+Arduino는 주기적으로 `sf/gh1/actuators/heartbeat`를 publish합니다.
 
-## 9. 확인 필요
+권장 주기:
 
-- Arduino reset을 MQTT command로 처리할지 Raspberry Pi GPIO helper로 처리할지 결정 필요
-- MQTT disconnect 시 actuator를 안전 상태로 내릴지, 마지막 상태를 유지할지 결정 필요
-- fan RPM의 PPR과 pull-up 회로 확정 필요
+- 5초
+
+UI는 마지막 heartbeat 수신 시각을 기준으로 LED 상태를 표시합니다.
+
+## 7. Fan RPM
+
+팬 RPM 측정이 가능한 경우 Arduino는 `sf/gh1/actuators/fan-rpm`을 publish합니다.
+
+대상:
+
+- `vent_fan_rpm`
+- `circ_fan_1_rpm`
+- `circ_fan_2_rpm`
+
+## 8. Reset
+
+운영 UI에는 Arduino reset 버튼이 있습니다.
+
+단, reset은 Arduino firmware가 자기 자신에게 MQTT 명령을 받아 수행하는 방식이 아니라 Raspberry Pi GPIO + 릴레이 helper가 수행합니다.
+
+권장 동작:
+
+- UI reset 버튼 클릭
+- UI/backend helper가 reset 요청 처리
+- Raspberry Pi GPIO가 릴레이를 짧게 제어
+- Arduino 전원 또는 reset line이 재시작됨
+- Arduino가 다시 WiFi/MQTT 연결 후 heartbeat publish
+
+## 9. 안전 규칙
+
+- 부팅 직후 actuator는 안전한 기본값으로 설정합니다.
+- MQTT 연결 전에도 actuator가 임의로 켜지지 않아야 합니다.
+- MQTT 연결이 끊겨도 마지막 상태 유지 또는 안전 상태 전환 정책을 명확히 해야 합니다.
+- heater/window/pump처럼 위험도가 있는 actuator는 테스트 단계에서 낮은 출력부터 확인합니다.
+
+## 10. 확인 필요
+
+- MQTT 연결 끊김 시 actuator 상태 유지 정책
+- window 개도율 계산 방식
+- fan RPM publish 주기
+- relay reset helper의 실제 회로와 GPIO 핀

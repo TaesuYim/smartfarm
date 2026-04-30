@@ -25,16 +25,18 @@ smartfarm_2026_05.sqlite3
 - logger는 현재 날짜 기준 월별 DB 파일을 선택해서 저장
 - 월이 바뀌면 새 DB 파일을 생성
 - UI는 기본적으로 현재 월 DB를 읽음
-- 그래프 탭에서 기간이 월을 넘으면 여러 DB 파일을 조회할 수 있어야 함
+- 그래프 탭에서 기간이 여러 월을 넘으면 여러 DB 파일을 조회할 수 있어야 함
 - 월별 DB 위치는 설정 파일 또는 실행 옵션으로 지정
 
 ## 2. 공통 규칙
 
 - DB engine: SQLite 3
-- greenhouse 값은 현재 `gh1`만 사용
+- `greenhouse` 값은 현재 `gh1`만 사용
 - timestamp는 ISO 8601 형식 사용
 - JSON key와 DB column은 `lower_snake_case`
 - 제어값 변경과 센서값 저장은 모두 DB에 기록
+- logger는 MQTT 수신 즉시 저장
+- `measurement_interval_sec`는 DB 저장 주기가 아니라 sensor hub 측정/publish 주기
 
 ## 3. 테이블 목록
 
@@ -47,6 +49,7 @@ smartfarm_2026_05.sqlite3
 | `heartbeat` | `sf/gh1/actuators/heartbeat` | Arduino 생존 신호 |
 | `fan_rpm` | `sf/gh1/actuators/fan-rpm` | 팬 RPM |
 | `app_setting` | 없음 | UI/측정 주기 설정 |
+| `ads_reading` | raw ADS debug topics | ADS 디버깅 로그 |
 
 ## 4. ADS 채널 구성
 
@@ -59,11 +62,11 @@ smartfarm_2026_05.sqlite3
 | `0x4a` | `A0`..`A3` | spare |
 | `0x4b` | `A0`..`A3` | sensor input |
 
-운영 UI와 `sensor_snapshot`는 완성형 센서값만 표시합니다. `0x4a`의 4개 spare 채널은 현재 운영 화면에 표시하지 않고, 향후 센서 추가를 위해 비워둡니다.
+운영 UI는 `sensor_snapshot`의 완성형 센서값만 표시합니다. `0x4a`의 4개 spare 채널은 현재 운영 화면에 표시하지 않고, 향후 센서 추가를 위해 비워둡니다.
 
 raw ADS 디버깅 값이 필요하면 별도 `ads_reading` 테이블 또는 로그로 보관할 수 있습니다.
 
-## 5. sensor_snapshot
+## 5. `sensor_snapshot`
 
 ```sql
 CREATE TABLE IF NOT EXISTS sensor_snapshot (
@@ -88,9 +91,9 @@ CREATE TABLE IF NOT EXISTS sensor_snapshot (
 );
 ```
 
-## 6. weather
+## 6. `weather`
 
-인터넷 또는 weather API 실패 시 row를 만들지 않거나 값을 `NULL`로 저장합니다. UI는 실패를 에러로 처리하지 않고 빈 값으로 표시합니다.
+인터넷 또는 weather API 실패 시 row를 만들지 않거나 값을 `NULL`로 저장합니다. UI는 실패를 오류로 처리하지 않고 빈 값으로 표시합니다.
 
 ```sql
 CREATE TABLE IF NOT EXISTS weather (
@@ -106,7 +109,7 @@ CREATE TABLE IF NOT EXISTS weather (
 );
 ```
 
-## 7. actuator_cmd
+## 7. `actuator_cmd`
 
 UI에서 제어값이 변경될 때 저장합니다.
 
@@ -137,6 +140,7 @@ CREATE TABLE IF NOT EXISTS actuator_cmd (
 
     window_1_cmd    TEXT,
     window_2_cmd    TEXT,
+    shading_screen_cmd  TEXT,
 
     led_r               INTEGER,
     led_g               INTEGER,
@@ -145,7 +149,7 @@ CREATE TABLE IF NOT EXISTS actuator_cmd (
 );
 ```
 
-## 8. actuator_state
+## 8. `actuator_state`
 
 Arduino가 실제 적용한 결과를 저장합니다.
 
@@ -178,6 +182,7 @@ CREATE TABLE IF NOT EXISTS actuator_state (
 
     window_1_cmd    TEXT,
     window_2_cmd    TEXT,
+    shading_screen_cmd  TEXT,
 
     led_r               INTEGER,
     led_g               INTEGER,
@@ -186,7 +191,7 @@ CREATE TABLE IF NOT EXISTS actuator_state (
 );
 ```
 
-## 9. heartbeat
+## 9. `heartbeat`
 
 UI의 LED 상태 판단에 사용합니다.
 
@@ -202,7 +207,7 @@ CREATE TABLE IF NOT EXISTS heartbeat (
 );
 ```
 
-## 10. fan_rpm
+## 10. `fan_rpm`
 
 ```sql
 CREATE TABLE IF NOT EXISTS fan_rpm (
@@ -218,7 +223,7 @@ CREATE TABLE IF NOT EXISTS fan_rpm (
 );
 ```
 
-## 11. app_setting
+## 11. `app_setting`
 
 UI 설정 탭에서 조정한 값을 저장합니다.
 
@@ -239,7 +244,24 @@ CREATE TABLE IF NOT EXISTS app_setting (
 | `heartbeat_timeout_sec` | `10` | heartbeat OFF 판단 기준 |
 | `monitoring_graph_minutes` | `30` | 모니터링 탭 기본 그래프 기간 |
 
-## 12. 인덱스
+## 12. `ads_reading`
+
+ADS raw/voltage 디버깅 값 저장용 테이블입니다.
+
+```sql
+CREATE TABLE IF NOT EXISTS ads_reading (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts              TEXT    NOT NULL,
+    source          TEXT,
+    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
+    ads_address     TEXT    NOT NULL,
+    channel         TEXT    NOT NULL,
+    kind            TEXT    NOT NULL,
+    value           REAL    NOT NULL
+);
+```
+
+## 13. 인덱스
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_sensor_snapshot_gh_ts
@@ -259,10 +281,81 @@ CREATE INDEX IF NOT EXISTS idx_heartbeat_gh_ts
 
 CREATE INDEX IF NOT EXISTS idx_fan_rpm_gh_ts
     ON fan_rpm (greenhouse, ts);
+
+CREATE INDEX IF NOT EXISTS idx_ads_reading_addr_channel_ts
+    ON ads_reading (ads_address, channel, ts);
 ```
 
-## 13. 확인 필요
+## 14. 최신값 조회 view
 
-- logger는 MQTT 수신 즉시 저장하며, `measurement_interval_sec`는 sensor hub 측정/publish 주기를 의미
+UI에서 최신값 조회를 간단히 하기 위한 view입니다.
+
+```sql
+CREATE VIEW IF NOT EXISTS latest_sensor_snapshot AS
+SELECT *
+FROM sensor_snapshot
+WHERE id = (
+    SELECT id FROM sensor_snapshot AS s2
+    WHERE s2.greenhouse = sensor_snapshot.greenhouse
+    ORDER BY s2.ts DESC
+    LIMIT 1
+);
+
+CREATE VIEW IF NOT EXISTS latest_weather AS
+SELECT *
+FROM weather
+WHERE id = (
+    SELECT id FROM weather AS w2
+    WHERE w2.greenhouse = weather.greenhouse
+    ORDER BY w2.ts DESC
+    LIMIT 1
+);
+
+CREATE VIEW IF NOT EXISTS latest_actuator_state AS
+SELECT *
+FROM actuator_state
+WHERE id = (
+    SELECT id FROM actuator_state AS a2
+    WHERE a2.greenhouse = actuator_state.greenhouse
+    ORDER BY a2.ts DESC
+    LIMIT 1
+);
+
+CREATE VIEW IF NOT EXISTS latest_heartbeat AS
+SELECT *
+FROM heartbeat
+WHERE id = (
+    SELECT id FROM heartbeat AS h2
+    WHERE h2.greenhouse = heartbeat.greenhouse
+    ORDER BY h2.ts DESC
+    LIMIT 1
+);
+
+CREATE VIEW IF NOT EXISTS latest_fan_rpm AS
+SELECT *
+FROM fan_rpm
+WHERE id = (
+    SELECT id FROM fan_rpm AS f2
+    WHERE f2.greenhouse = fan_rpm.greenhouse
+    ORDER BY f2.ts DESC
+    LIMIT 1
+);
+```
+
+## 15. 보존 정책 권장
+
+| 테이블 | 권장 보존 기간 | 비고 |
+| --- | --- | --- |
+| `sensor_snapshot` | 90일 이상 | 과거 추세용 |
+| `weather` | 90일 이상 | 과거 추세용 |
+| `actuator_cmd` | 30일 이상 | 디버깅/감사용 |
+| `actuator_state` | 30일 이상 | 디버깅/감사용 |
+| `heartbeat` | 7일 이상 | online 판단용 |
+| `fan_rpm` | 30일 이상 | 모니터링용 |
+| `ads_reading` | 짧게 또는 선택 저장 | 디버깅용 |
+
+## 16. 확인 필요
+
 - 월을 넘는 그래프 조회 시 여러 SQLite 파일을 동시에 조회하는 방식 구현 필요
-- 기존 `ads_reading` 테이블은 raw ADS 디버깅 용도이므로 운영 UI의 기본 화면에서는 제외
+- `ads_reading`을 운영 배포 후에도 유지할지 결정 필요
+- DB 파일 경로와 백업 전략 확정 필요

@@ -2,22 +2,31 @@ import argparse
 import json
 import re
 
-from rpi.logger.db import connect_db, init_db, insert_ads_reading, insert_sensor_snapshot
+import sys
+from pathlib import Path
 
+# Add project root to sys.path to allow absolute imports when running as a script
+project_root = str(Path(__file__).resolve().parents[2])
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from rpi.logger.db import connect_db, init_db, insert_ads_reading, insert_sensor_snapshot, insert_actuator_state
 
 SNAPSHOT_TOPIC_RE = re.compile(r"^sf/(?P<greenhouse>gh[12])/sensors/snapshot$")
+ACTUATOR_STATE_TOPIC_RE = re.compile(r"^sf/(?P<greenhouse>gh[12])/actuators/state$")
 ADS_TOPIC_RE = re.compile(
     r"^sensor/ads1115_(?P<address>0x[0-9a-fA-F]+)/(?P<channel>a[0-3])/(?P<measurement>raw|voltage)$"
 )
-
 
 def parse_mqtt_payload(payload_bytes):
     text = payload_bytes.decode("utf-8")
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        return float(text)
-
+        try:
+            return float(text)
+        except ValueError:
+            return text
 
 def handle_mqtt_message(conn, topic, payload_bytes):
     snapshot_match = SNAPSHOT_TOPIC_RE.match(topic)
@@ -27,6 +36,14 @@ def handle_mqtt_message(conn, topic, payload_bytes):
             raise ValueError(f"snapshot payload must be JSON object: {topic}")
         insert_sensor_snapshot(conn, snapshot_match.group("greenhouse"), payload)
         return "sensor_snapshot"
+
+    state_match = ACTUATOR_STATE_TOPIC_RE.match(topic)
+    if state_match:
+        payload = parse_mqtt_payload(payload_bytes)
+        if not isinstance(payload, dict):
+            raise ValueError(f"actuator state payload must be JSON object: {topic}")
+        insert_actuator_state(conn, state_match.group("greenhouse"), payload)
+        return "actuator_state"
 
     ads_match = ADS_TOPIC_RE.match(topic)
     if ads_match:
@@ -75,7 +92,7 @@ def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_message = build_on_message(conn)
     client.connect(args.host, args.port, 60)
-    client.subscribe("sensor/ads1115_+/+/+")
+    client.subscribe("sensor/+/+/+")
     client.subscribe("sf/+/sensors/snapshot")
     print(f"logging MQTT messages from {args.host}:{args.port} into {args.db}")
     client.loop_forever()
