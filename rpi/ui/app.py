@@ -211,18 +211,18 @@ INDEX_HTML = """<!doctype html>
   <div class="grid">
     <div class="card">
       <div class="sensor-label">Ventilation Fan</div>
-      <input type="range" class="slider" id="vent_fan" onchange="sendCmd({'vent_fan_pwm_pct': parseInt(this.value)})">
+      <input type="range" class="slider" id="vent_fan" min="0" max="100" value="0" oninput="document.getElementById('vent_fan_val').innerText=this.value" onchange="sendCmd({'vent_fan_pwm_pct': parseInt(this.value)})">
       <div class="ctrl-row"><span id="vent_fan_val">0</span>%</div>
     </div>
     <div class="card">
       <div class="sensor-label">Mist & Heaters</div>
       <div class="ctrl-row"><span>Mist</span><div id="mist_toggle" class="toggle" onclick="toggleMist()"></div></div>
-      <div class="ctrl-row"><span>Heater 1</span><input type="range" class="slider" style="width:60%" id="h1" onchange="sendCmd({'heater_1_pwm_pct': parseInt(this.value)})"></div>
+      <div class="ctrl-row"><span>H1</span><input type="range" class="slider" style="width:40%" id="h1" min="0" max="100" value="0" onchange="sendCmd({'heater_1_pwm_pct': parseInt(this.value)})"> <span>H2</span><input type="range" class="slider" style="width:40%" id="h2" min="0" max="100" value="0" onchange="sendCmd({'heater_2_pwm_pct': parseInt(this.value)})"></div>
     </div>
     <div class="card">
       <div class="sensor-label">Circulation Fans</div>
-      <div class="ctrl-row">Fan 1 <input type="range" class="slider" style="width:60%" id="circ1" onchange="sendCmd({'circ_fan_1_pwm_pct': parseInt(this.value)})"></div>
-      <div class="ctrl-row">Fan 2 <input type="range" class="slider" style="width:60%" id="circ2" onchange="sendCmd({'circ_fan_2_pwm_pct': parseInt(this.value)})"></div>
+      <div class="ctrl-row">Fan 1 <input type="range" class="slider" style="width:60%" id="circ1" min="0" max="100" value="0" onchange="sendCmd({'circ_fan_1_pwm_pct': parseInt(this.value)})"></div>
+      <div class="ctrl-row">Fan 2 <input type="range" class="slider" style="width:60%" id="circ2" min="0" max="100" value="0" onchange="sendCmd({'circ_fan_2_pwm_pct': parseInt(this.value)})"></div>
     </div>
   </div>
 
@@ -234,6 +234,14 @@ INDEX_HTML = """<!doctype html>
         <button class="btn-cmd" id="win1_open" onclick="sendCmd({'window_1_cmd':'open'})">Open</button>
         <button class="btn-cmd" id="win1_stop" onclick="sendCmd({'window_1_cmd':'stop'})">Stop</button>
         <button class="btn-cmd" id="win1_close" onclick="sendCmd({'window_1_cmd':'close'})">Close</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sensor-label">Ventilation Window 2</div>
+      <div class="btn-group">
+        <button class="btn-cmd" id="win2_open" onclick="sendCmd({'window_2_cmd':'open'})">Open</button>
+        <button class="btn-cmd" id="win2_stop" onclick="sendCmd({'window_2_cmd':'stop'})">Stop</button>
+        <button class="btn-cmd" id="win2_close" onclick="sendCmd({'window_2_cmd':'close'})">Close</button>
       </div>
     </div>
     <div class="card">
@@ -250,14 +258,19 @@ INDEX_HTML = """<!doctype html>
   <div class="grid">
     <div class="card">
       <div class="sensor-label">Main Pump</div>
-      <input type="range" class="slider" id="pump" onchange="sendCmd({'pump_pwm_pct': parseInt(this.value)})">
+      <input type="range" class="slider" id="pump" min="0" max="100" value="0" oninput="document.getElementById('pump_val').innerText=this.value" onchange="sendCmd({'pump_pwm_pct': parseInt(this.value)})">
       <div class="ctrl-row"><span id="pump_val">0</span>%</div>
     </div>
-    <div class="card">
-      <div class="sensor-label">Valves</div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-        <div class="ctrl-row">Pot 1 <div id="v1" class="toggle" onclick="toggleValve(1)"></div></div>
-        <div class="ctrl-row">Pot 2 <div id="v2" class="toggle" onclick="toggleValve(2)"></div></div>
+    <div class="card" style="grid-column: span 2;">
+      <div class="sensor-label">Solenoid Valves</div>
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px; margin-top:10px;">
+        <div class="ctrl-row">P1 <div id="v1" class="toggle" onclick="toggleValve(1)"></div></div>
+        <div class="ctrl-row">P2 <div id="v2" class="toggle" onclick="toggleValve(2)"></div></div>
+        <div class="ctrl-row">P3 <div id="v3" class="toggle" onclick="toggleValve(3)"></div></div>
+        <div class="ctrl-row">P4 <div id="v4" class="toggle" onclick="toggleValve(4)"></div></div>
+        <div class="ctrl-row">P5 <div id="v5" class="toggle" onclick="toggleValve(5)"></div></div>
+        <div class="ctrl-row">P6 <div id="v6" class="toggle" onclick="toggleValve(6)"></div></div>
+        <div class="ctrl-row">Fog <div id="v7" class="toggle" onclick="toggleValve(7)"></div></div>
       </div>
     </div>
   </div>
@@ -270,7 +283,7 @@ INDEX_HTML = """<!doctype html>
     </div>
     <div class="card">
       <div class="sensor-label">Brightness</div>
-      <input type="range" class="slider" id="led_bright" onchange="sendCmd({'led_brightness_pct': parseInt(this.value)})">
+      <input type="range" class="slider" id="led_bright" min="0" max="100" value="0" onchange="sendCmd({'led_brightness_pct': parseInt(this.value)})">
     </div>
   </div>
 </div>
@@ -289,19 +302,23 @@ function setGH(gh) {
 async function sendCmd(cmds) {
   await fetch('/api/control', {
     method: 'POST',
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ greenhouse: curGH, commands: cmds })
   });
+  // 즉시 업데이트 반영을 위해 데이터 로드
+  setTimeout(loadData, 500);
 }
 
 function toggleMist() {
   currentMist = !currentMist;
+  document.getElementById('mist_toggle').classList.toggle('on', currentMist);
   sendCmd({'mist_on': currentMist});
 }
 
 function toggleValve(idx) {
   valveStates[idx-1] = !valveStates[idx-1];
-  let key = `valve_pot_${idx}_on`;
-  if(idx === 7) key = 'valve_fog_on';
+  document.getElementById(`v${idx}`).classList.toggle('on', valveStates[idx-1]);
+  let key = (idx === 7) ? 'valve_fog_on' : `valve_pot_${idx}_on`;
   let cmd = {}; cmd[key] = valveStates[idx-1];
   sendCmd(cmd);
 }
@@ -314,39 +331,83 @@ function sendRGB(hex) {
 }
 
 async function loadData() {
-  const res = await fetch(`/api/latest?greenhouse=${curGH}`);
-  const data = await res.json();
-  
-  // Update Sensors
-  const grid = document.getElementById('sensor-grid');
-  grid.innerHTML = data.sensors.map(s => `
-    <div class="card">
-      <div class="sensor-label">${s.label}</div>
-      <div class="sensor-val">${s.value !== null ? s.value.toFixed(1) : '--'}<span style="font-size:1rem; margin-left:5px">${s.unit}</span></div>
-    </div>
-  `).join('');
+  try {
+    const res = await fetch(`/api/latest?greenhouse=${curGH}`);
+    const data = await res.json();
+    
+    // Update Sensors
+    const grid = document.getElementById('sensor-grid');
+    grid.innerHTML = data.sensors.map(s => `
+      <div class="card">
+        <div class="sensor-label">${s.label}</div>
+        <div class="sensor-val">${s.value !== null ? s.value.toFixed(1) : '--'}<span style="font-size:1rem; margin-left:5px">${s.unit}</span></div>
+      </div>
+    `).join('');
 
-  // Update Actuator Status (Feedback)
-  if(data.actuators) {
-    const act = data.actuators;
-    document.getElementById('vent_fan').value = act.vent_fan_pwm_pct || 0;
-    document.getElementById('vent_fan_val').innerText = act.vent_fan_pwm_pct || 0;
-    document.getElementById('pump').value = act.pump_pwm_pct || 0;
-    document.getElementById('pump_val').innerText = act.pump_pwm_pct || 0;
-    
-    currentMist = act.mist_on;
-    document.getElementById('mist_toggle').classList.toggle('on', !!act.mist_on);
-    
-    // Update Window/Screen Button States
-    ['window_1_cmd', 'shading_screen_cmd'].forEach(key => {
-        const prefix = key.startsWith('win') ? 'win1' : 'shading';
+    // Update Actuator Status (Feedback from Arduino)
+    if(data.actuators) {
+      const act = data.actuators;
+      
+      // Sliders (Update only if user is not dragging)
+      const sliders = {
+        'vent_fan': act.vent_fan_pwm_pct,
+        'h1': act.heater_1_pwm_pct,
+        'h2': act.heater_2_pwm_pct,
+        'circ1': act.circ_fan_1_pwm_pct,
+        'circ2': act.circ_fan_2_pwm_pct,
+        'pump': act.pump_pwm_pct,
+        'led_bright': act.led_brightness_pct
+      };
+      
+      for(let id in sliders) {
+        const el = document.getElementById(id);
+        if(el && document.activeElement !== el) {
+          el.value = sliders[id] || 0;
+          const valEl = document.getElementById(id + '_val');
+          if(valEl) valEl.innerText = sliders[id] || 0;
+        }
+      }
+      
+      // Mist
+      currentMist = !!act.mist_on;
+      document.getElementById('mist_toggle').classList.toggle('on', currentMist);
+      
+      // Valves
+      for(let i=1; i<=7; i++) {
+        let key = (i === 7) ? 'valve_fog_on' : `valve_pot_${i}_on`;
+        valveStates[i-1] = !!act[key];
+        const vEl = document.getElementById(`v${i}`);
+        if(vEl) vEl.classList.toggle('on', valveStates[i-1]);
+      }
+      
+      // Window/Screen Button States
+      const btnStates = {
+        'win1': act.window_1_cmd,
+        'win2': act.window_2_cmd,
+        'shading': act.shading_screen_cmd
+      };
+      
+      for(let prefix in btnStates) {
         ['open', 'stop', 'close'].forEach(cmd => {
-            const btn = document.getElementById(`${prefix}_${cmd}`);
-            if(btn) btn.classList.toggle('active', act[key] === cmd);
+          const btn = document.getElementById(`${prefix}_${cmd}`);
+          if(btn) btn.classList.toggle('active', btnStates[prefix] === cmd);
         });
-    });
+      }
+
+      // LED Color
+      if(act.led_r !== undefined) {
+        const hex = "#" + ((1 << 24) + (act.led_r << 16) + (act.led_g << 8) + act.led_b).toString(16).slice(1);
+        document.getElementById('led_color').value = hex;
+      }
+    }
+  } catch(e) {
+    console.error("Data load failed", e);
   }
 }
+
+setInterval(loadData, 2000);
+loadData();
+</script>
 
 setInterval(loadData, 2000);
 loadData();

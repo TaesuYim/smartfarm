@@ -2,6 +2,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
+#include <AccelStepper.h> // DM542 제어용 라이브러리 추가
 
 // ==========================================
 // Network settings
@@ -28,7 +29,7 @@ String TOPIC_HEARTBEAT = String("sf/") + GH_ID + "/actuators/heartbeat";
 // Pin map
 // ==========================================
 const int PIN_VALVES[] = {2, 3, 4, 5, 6, 7, 8};
-const int PIN_LED_STRIP = 9;                          // LED (Addressable)
+const int PIN_LED_STRIP = 9;                          // 원래 핀 번호 9번으로 원복
 const int PIN_SHADING_PUL = 10;
 const int PIN_SHADING_DIR = 11;
 
@@ -37,9 +38,11 @@ const int PIN_SHADING_DIR = 11;
 // ==========================================
 #define TOTAL_LEDS 100
 #define USE_LEDS 20
+// 테스트 파일과 동일한 형식의 생성자 (핀 번호만 9로 유지)
 Adafruit_NeoPixel strip(TOTAL_LEDS, PIN_LED_STRIP, NEO_RGB + NEO_KHZ800);
 
-const unsigned long STEP_INTERVAL_US = 1000;
+// AccelStepper 초기화 (DRIVER 모드: STEP/DIR 핀 사용)
+AccelStepper stepper(AccelStepper::DRIVER, PIN_SHADING_PUL, PIN_SHADING_DIR);
 
 // ==========================================
 // State
@@ -58,7 +61,7 @@ PubSubClient mqttClient(wifiClient);
 
 unsigned long lastHeartbeat = 0;
 const unsigned long HEARTBEAT_INTERVAL_MS = 5000;
-unsigned long lastStepTime = 0;
+String last_shading_cmd = "stop";
 
 // ==========================================
 // Hardware helpers
@@ -69,8 +72,11 @@ void applyAllHardware() {
     digitalWrite(PIN_VALVES[i], state.valves[i] ? HIGH : LOW);
   }
   
-  // LED
+  // LED (테스트 파일 setColor 로직 적용)
+  strip.clear(); 
   strip.setBrightness(map(constrain(state.led_bright, 0, 100), 0, 100, 0, 255));
+  
+  // 사용하기로 한 20개(USE_LEDS)만 색상 적용
   for(int i=0; i<USE_LEDS; i++) {
     strip.setPixelColor(i, strip.Color(state.led_r, state.led_g, state.led_b));
   }
@@ -78,13 +84,20 @@ void applyAllHardware() {
 }
 
 void handleStepper() {
-  if (state.shading_cmd == "stop") return;
-  
-  if (micros() - lastStepTime >= STEP_INTERVAL_US) {
-    lastStepTime = micros();
-    digitalWrite(PIN_SHADING_DIR, (state.shading_cmd == "open") ? HIGH : LOW);
-    digitalWrite(PIN_SHADING_PUL, !digitalRead(PIN_SHADING_PUL));
+  // 명령이 바뀌었을 때만 스피드 설정 업데이트
+  if (state.shading_cmd != last_shading_cmd) {
+    if (state.shading_cmd == "open") {
+      stepper.setSpeed(5000); // 5000 속도로 즉시 출발
+    } else if (state.shading_cmd == "close") {
+      stepper.setSpeed(-5000);
+    } else {
+      stepper.setSpeed(0);    // 즉시 정지
+    }
+    last_shading_cmd = state.shading_cmd;
   }
+  
+  // 실제 모터 구동 (매 루프마다 실행)
+  stepper.runSpeed();
 }
 
 // ==========================================
@@ -218,23 +231,26 @@ void setup() {
   delay(3000);
   Serial.println("control_node_2 boot");
 
+  // [중요] WiFi 연결 전에 LED부터 즉시 끕니다.
+  strip.begin();
+  for(int i=0; i<TOTAL_LEDS; i++) {
+    strip.setPixelColor(i, 0, 0, 0); // 100개 모두 끄기 설정
+  }
+  strip.show(); // 물리적 신호 전송
+  delay(100);   // 신호가 안정될 때까지 아주 짧은 대기
+  strip.setBrightness(50);
+  Serial.println("neopixel 100 LEDs cleared at startup");
+
   for(int i=0; i<7; i++) {
     pinMode(PIN_VALVES[i], OUTPUT);
     digitalWrite(PIN_VALVES[i], LOW);
   }
   Serial.println("valves ready");
 
-  pinMode(PIN_SHADING_PUL, OUTPUT);
-  pinMode(PIN_SHADING_DIR, OUTPUT);
-  digitalWrite(PIN_SHADING_PUL, LOW);
-  digitalWrite(PIN_SHADING_DIR, LOW);
-  Serial.println("stepper pins ready");
-
-  strip.begin();
-  strip.clear();
-  strip.show();
-  Serial.println("neopixel ready");
-
+  // 극한의 속도와 부드러운 가속도 세팅
+  stepper.setMaxSpeed(10000.0);
+  stepper.setAcceleration(5000.0);
+  
   applyAllHardware();
   Serial.println("hardware safe state applied");
 
@@ -260,3 +276,4 @@ void loop() {
     publishHeartbeat();
   }
 }
+
