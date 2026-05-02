@@ -1,6 +1,6 @@
 # SFES Lab UI
 
-Shows the SmartFarm dashboard for `GH1`.
+Shows the SmartFarm dashboard for `GH1`. `GH2` is a future expansion target.
 
 The target display is `1024x600`, but the UI should stay usable on other browser sizes. The final UI is tab-based:
 
@@ -14,7 +14,13 @@ The UI is display/input only. Background services such as logger, sensor hub, an
 ## Run
 
 ```powershell
-python -m rpi.ui.app --db smartfarm_2026_04.sqlite3 --host 127.0.0.1 --port 8000
+python -m rpi.ui.app --db-dir data --host 127.0.0.1 --port 8000
+```
+
+For fixed-file debugging:
+
+```powershell
+python -m rpi.ui.app --db smartfarm_2026_05.sqlite3 --host 127.0.0.1 --port 8000
 ```
 
 Open:

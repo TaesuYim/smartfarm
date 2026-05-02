@@ -17,3 +17,6 @@
 - **Greenhouse ID**: `gh1`
 - **Heater PWM Window**: `5000ms` (5초)
 - **Fan PWM Frequency**: `20kHz` (Arduino UNO R4 전용)
+- **DB Directory**: `data`
+- **Monthly DB Filename**: `smartfarm_YYYY_MM.sqlite3`
+- **KMA Weather Fetch**: 매시 `01`분에 정시 데이터 요청

@@ -66,6 +66,43 @@ class MqttToSqliteTest(unittest.TestCase):
         self.assertEqual(row["source"], payload["source"])
         self.assertAlmostEqual(row["temp_pot_c"], payload["temp_pot_c"], places=6)
 
+    def test_kma_weather_message_is_written_to_weather_table(self):
+        payload = {
+            "ts": "2026-05-03T01:00:00+09:00",
+            "fetched_at": "2026-05-03T01:01:00+09:00",
+            "source": "kma",
+            "station_id": "146",
+            "internal_temp_c": 24.7,
+            "internal_hum_pct": 62.5,
+            "ta": 18.2,
+            "hm": 72.0,
+            "rn": 0.0,
+            "ws": 1.8,
+            "icsr": 0.0,
+            "ss": 0.0,
+            "qc_flags": {"ta": 0, "hm": 0, "rn": 0, "ws": 0, "icsr": 0, "ss": 0},
+        }
+
+        with closing(sqlite3.connect(":memory:")) as conn:
+            conn.row_factory = sqlite3.Row
+            init_db(conn)
+
+            stored_table = handle_mqtt_message(
+                conn,
+                "sf/gh1/sensors/weather",
+                json.dumps(payload).encode("utf-8"),
+            )
+
+            row = conn.execute("SELECT * FROM weather").fetchone()
+
+        self.assertEqual(stored_table, "weather")
+        self.assertIsNotNone(row)
+        self.assertEqual(row["greenhouse"], "gh1")
+        self.assertEqual(row["ts"], payload["ts"])
+        self.assertEqual(row["fetched_at"], payload["fetched_at"])
+        self.assertAlmostEqual(row["ta"], payload["ta"], places=6)
+        self.assertIn('"ta": 0', row["qc_flags"])
+
 
 if __name__ == "__main__":
     unittest.main()

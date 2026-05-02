@@ -1,10 +1,8 @@
 # MQTT Logger
 
-SmartFarm MQTT messages are stored in monthly SQLite DB files.
+SmartFarm MQTT messages are stored immediately into monthly SQLite DB files.
 
-Current production greenhouse: `GH1`.
-
-The logger writes each MQTT message immediately when it is received. The configurable interval in the UI is the sensor hub measurement/publish interval, not a delayed DB write interval.
+Current production greenhouse: `GH1` (`gh1`). `GH2` is a future expansion target.
 
 Monthly DB filename:
 
@@ -14,17 +12,35 @@ smartfarm_YYYY_MM.sqlite3
 
 ## Run
 
+Default monthly DB mode:
+
 ```powershell
-python -m rpi.logger.mqtt_logger --db smartfarm_2026_04.sqlite3 --host 127.0.0.1 --port 1883
+python -m rpi.logger.mqtt_logger --db-dir data --host 127.0.0.1 --port 1883
 ```
 
-## Subscribed topics
+Fixed DB file mode for debugging:
+
+```powershell
+python -m rpi.logger.mqtt_logger --db smartfarm_2026_05.sqlite3 --host 127.0.0.1 --port 1883
+```
+
+## Subscribed Topics
 
 - `sf/gh1/sensors/snapshot`
-  - Stored in `sensor_snapshot`
+  - Stored in `sensor_snapshot` and `sensor_latest`
+- `sf/gh1/sensors/weather`
+  - Stored in `weather`
+- `sf/gh1/actuators/cmd`
+  - Stored in `actuator_cmd`
 - `sf/gh1/actuators/state`
-  - Stored in `actuator_state`
+  - Stored in `actuator_history` and merged into `actuator_latest`
 - `sf/gh1/actuators/heartbeat`
   - Stored in `heartbeat`
+- `sf/gh1/actuators/fan-rpm`
+  - Stored in `fan_rpm`
+- `sensor/ads1115_*/+/raw`, `sensor/ads1115_*/+/voltage`
+  - Stored in `ads_reading` for debugging
 
-Debug-only ADS raw topics may remain available during development, but the production UI uses complete `sensor_snapshot` rows.
+## Weather
+
+The weather service should request KMA hourly data at `HH:01` for the `HH:00` observation. The logger stores both `ts` (observation time) and `fetched_at` (actual fetch time), plus internal temperature/humidity, KMA `ta`, `hm`, `rn`, `ws`, `icsr`, `ss`, and QC flags.

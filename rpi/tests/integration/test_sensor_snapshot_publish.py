@@ -7,7 +7,7 @@ sf/gh1/sensors/snapshot MQTT 토픽에 발행합니다.
 
 실행:
     ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py
-    ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py --gh gh2
+    ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py --gh gh1
     ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py --rate 0.5
 """
 
@@ -148,7 +148,7 @@ def read_snapshot(ch_4b, ch_49, ch_48):
 
 def main():
     parser = argparse.ArgumentParser(description="ADS1115 센서 snapshot을 MQTT로 발행합니다.")
-    parser.add_argument("--gh", default="gh1", choices=["gh1", "gh2"], help="온실 ID (기본: gh1)")
+    parser.add_argument("--gh", default="gh1", choices=["gh1"], help="온실 ID (현재 구현: gh1)")
     parser.add_argument("--host", default="127.0.0.1", help="MQTT 브로커 호스트")
     parser.add_argument("--port", default=1883, type=int, help="MQTT 브로커 포트")
     parser.add_argument("--rate", default=1.0, type=float, help="초당 발행 횟수 (기본: 1)")

@@ -1,13 +1,14 @@
 <!-- File: README.md -->
 # SmartFarm
 
-Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, `gh2`)을 제어하는 스마트팜 프로젝트입니다.
+Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 소형 온실을 제어하는 스마트팜 프로젝트입니다. 현재 구현/운용 대상은 `GH1`(`gh1`) 1동이며, `GH2`(`gh2`)는 향후 확장 대상으로만 둡니다.
 
 이 레포는 코드와 문서를 함께 관리하지만, 현재는 "문서 우선(docs-first)" 방식으로 구조를 잡는 것을 목표로 합니다.
 핵심 요구사항과 계약은 `docs/` 아래 문서에 정리되어 있으며, AI 에이전트는 그 문서를 기준으로 코드를 생성/수정합니다.
 
 ## 1. 시스템 개요
-- 대상 온실: `gh1`, `gh2`
+- 현재 대상 온실: `gh1`
+- 향후 확장 대상: `gh2`
 - Raspberry Pi 5
   - 센서 수집(ADS1115)
   - MQTT 브로커
@@ -29,7 +30,7 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
 - [docs/ui-spec.md](docs/ui-spec.md)
   - UI 요구사항
 - [docs/db-schema.md](docs/db-schema.md)
-  - SQLite DB 스키마 초안
+  - SQLite DB 스키마
 - [docs/pin-map.md](docs/pin-map.md)
   - ADS1115 주소/채널과 Arduino 핀 배치
 - [docs/arduino-firmware-spec.md](docs/arduino-firmware-spec.md)
@@ -38,17 +39,17 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 2개의 소형 온실(`gh1`, 
   - 오너/운영자가 먼저 읽어야 할 문서
 
 ## 3. MQTT 토픽 규칙
-온실별로 토픽을 반드시 분리합니다.
+현재 운영 토픽은 `gh1`만 사용합니다. `gh2`를 추가할 때도 온실별 토픽은 반드시 분리합니다.
 
 - `sf/gh1/sensors/...`
 - `sf/gh1/actuators/...`
-- `sf/gh2/sensors/...`
-- `sf/gh2/actuators/...`
+- `sf/gh2/sensors/...` (향후)
+- `sf/gh2/actuators/...` (향후)
 
 예시:
 - `sf/gh1/sensors/snapshot`
 - `sf/gh1/actuators/cmd`
-- `sf/gh2/actuators/state`
+- `sf/gh1/actuators/state`
 
 자세한 내용은 [docs/mqtt-topics.md](docs/mqtt-topics.md)를 참고하세요.
 
@@ -76,14 +77,15 @@ smartfarm/
 ├─ rpi/
 │  ├─ README.md
 │  ├─ requirements.txt
-│  ├─ sensor_hub/
+│  ├─ sensor_hub/          # planned
 │  ├─ logger/
 │  ├─ ui/
-│  ├─ weather_service/
+│  ├─ weather_service/     # planned
 │  └─ tests/
 └─ arduino/
    ├─ README.md
-   ├─ control_node/
+   ├─ control_node_1/
+   ├─ control_node_2/
    └─ tests/
 ```
 
@@ -101,7 +103,7 @@ smartfarm/
   - UI 동작 변경
   - 히터, 모터, 릴레이, 펌프 관련 안전 변경
   - Arduino state/heartbeat/RPM 동작 변경
-  - DB 스키마 초안 변경
+  - DB 스키마 변경
   - 핀맵 변경
 
 ## 7. 안전 주의

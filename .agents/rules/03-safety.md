@@ -15,5 +15,5 @@
 - MQTT disconnect 또는 invalid command에서 안전 상태를 유지하는가
 
 ## PR 체크리스트
-액추에이터 관련 변경 시 [.github/pull_request_template.md](.github/pull_request_template.md)의
+액추에이터 관련 변경 시 [.github/pull_request_template.md](../../.github/pull_request_template.md)의
 하드웨어 안전 체크리스트를 **반드시** 확인합니다.

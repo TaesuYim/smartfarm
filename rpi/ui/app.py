@@ -14,10 +14,9 @@ project_root = str(Path(__file__).resolve().parents[2])
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from rpi.logger.db import SENSOR_VALUE_COLUMNS
+from rpi.logger.db import DEFAULT_DB_DIR, SENSOR_VALUE_COLUMNS, monthly_db_path, now_kst_iso
 
-DEFAULT_DB_PATH = "smartfarm.sqlite3"
-GREENHOUSES = ("gh1", "gh2")
+GREENHOUSES = ("gh1",)
 
 SENSOR_LABELS = {
     "temp_pot_c": ("Pot Temperature", "°C"),
@@ -33,12 +32,35 @@ SENSOR_LABELS = {
     "soil_moisture_5_pct": ("Soil Moisture 5", "%"),
     "soil_moisture_6_pct": ("Soil Moisture 6", "%"),
 }
-# Sensor columns definition
-SENSOR_VALUE_COLUMNS = [
-    "temp_pot_c", "hum_pot_pct", "temp_top_c", "hum_top_pct",
-    "co2_ppm", "par_w_m2", "soil_moisture_1_pct", "soil_moisture_2_pct",
-    "soil_moisture_3_pct", "soil_moisture_4_pct", "soil_moisture_5_pct", "soil_moisture_6_pct"
-]
+def resolve_db_path(db_path=None, db_dir=DEFAULT_DB_DIR):
+    return Path(db_path) if db_path else monthly_db_path(db_dir)
+
+
+def fetch_latest_sensor_snapshot(db_path, greenhouse):
+    db_file = Path(db_path)
+    if not db_file.exists():
+        return None
+
+    with closing(sqlite3.connect(db_file)) as conn:
+        conn.row_factory = sqlite3.Row
+        return conn.execute(
+            "SELECT * FROM sensor_latest WHERE greenhouse = ?",
+            (greenhouse,),
+        ).fetchone()
+
+
+def build_sensor_payload(sensor_row):
+    snapshot = dict(sensor_row) if sensor_row else None
+    sensors = []
+    for column in SENSOR_VALUE_COLUMNS:
+        label, unit = SENSOR_LABELS.get(column, (column, ""))
+        value = snapshot.get(column) if snapshot else None
+        sensors.append({"key": column, "label": label, "value": value, "unit": unit})
+    return {
+        "snapshot": snapshot,
+        "sensors": sensors,
+        "sensor_ts": snapshot["ts"] if snapshot else None,
+    }
 
 def fetch_latest_data(db_path, greenhouse):
     db_file = Path(db_path)
@@ -65,6 +87,9 @@ def fetch_latest_data(db_path, greenhouse):
 
 def publish_mqtt(greenhouse, command_dict):
     topic = f"sf/{greenhouse}/actuators/cmd"
+    command_dict = dict(command_dict)
+    command_dict.setdefault("ts", now_kst_iso())
+    command_dict.setdefault("source", "sfes_lab_ui")
     payload = json.dumps(command_dict)
     try:
         subprocess.run(["mosquitto_pub", "-t", topic, "-m", payload], check=True)
@@ -74,7 +99,12 @@ def publish_mqtt(greenhouse, command_dict):
         return False
 
 class SmartFarmRequestHandler(BaseHTTPRequestHandler):
-    db_path = DEFAULT_DB_PATH
+    db_path = None
+    db_dir = DEFAULT_DB_DIR
+
+    @classmethod
+    def current_db_path(cls):
+        return resolve_db_path(cls.db_path, cls.db_dir)
 
     def do_GET(self):
         parsed_url = urlparse(self.path)
@@ -85,26 +115,17 @@ class SmartFarmRequestHandler(BaseHTTPRequestHandler):
         if parsed_url.path == "/api/latest":
             query = parse_qs(parsed_url.query)
             greenhouse = query.get("greenhouse", ["gh1"])[0]
+            if greenhouse not in GREENHOUSES:
+                json_response(self, HTTPStatus.BAD_REQUEST, {"error": "unsupported greenhouse"})
+                return
             try:
-                sensor_row, actuator_row = fetch_latest_data(self.db_path, greenhouse)
-                
-                sensors = []
-                for column in SENSOR_VALUE_COLUMNS:
-                    label, unit = SENSOR_LABELS.get(column, (column, ""))
-                    # 더 확실하게 값을 가져오도록 수정
-                    val = None
-                    if sensor_row and column in sensor_row:
-                        val = sensor_row[column]
-                    
-                    sensors.append({"key": column, "label": label, "value": val, "unit": unit})
+                sensor_row, actuator_row = fetch_latest_data(self.current_db_path(), greenhouse)
+                sensor_payload = build_sensor_payload(sensor_row)
 
                 payload = {
-                    "sensors": sensors,
-                    "sensor_ts": sensor_row["ts"] if sensor_row else None,
+                    **sensor_payload,
                     "actuators": actuator_row if actuator_row else None
                 }
-                # DEBUG: 서버 터미널에서 데이터 확인용
-                # print(f"Payload: {payload}")
                 
                 json_response(self, HTTPStatus.OK, payload)
             except Exception as e:
@@ -122,6 +143,9 @@ class SmartFarmRequestHandler(BaseHTTPRequestHandler):
             data = json.loads(post_data)
             
             greenhouse = data.get("greenhouse", "gh1")
+            if greenhouse not in GREENHOUSES:
+                json_response(self, HTTPStatus.BAD_REQUEST, {"error": "unsupported greenhouse"})
+                return
             commands = data.get("commands", {})
             
             if publish_mqtt(greenhouse, commands):
@@ -155,7 +179,7 @@ INDEX_HTML = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SmartFarm Pro v2</title>
+  <title>SFES Lab</title>
   <style>
     :root {
       --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --primary: #10b981; --accent: #3b82f6;
@@ -197,10 +221,9 @@ INDEX_HTML = """<!doctype html>
 <body>
 <div class="container">
   <header>
-    <h1 style="margin:0">SmartFarm <span style="color:var(--primary)">Pro</span></h1>
+    <h1 style="margin:0">SFES <span style="color:var(--primary)">Lab</span></h1>
     <div class="gh-selector">
       <button class="btn-gh active" onclick="setGH('gh1')">GH1</button>
-      <button class="btn-gh" onclick="setGH('gh2')">GH2</button>
     </div>
   </header>
 
@@ -408,27 +431,26 @@ async function loadData() {
 setInterval(loadData, 2000);
 loadData();
 </script>
-
-setInterval(loadData, 2000);
-loadData();
-</script>
 </body>
 </html>
 """
 
-def run_server(db_path, host, port):
+def run_server(db_path, db_dir, host, port):
     SmartFarmRequestHandler.db_path = db_path
+    SmartFarmRequestHandler.db_dir = db_dir
     server = ThreadingHTTPServer((host, port), SmartFarmRequestHandler)
-    print(f"SmartFarm Pro UI: http://{host}:{port}")
+    print(f"SFES Lab UI: http://{host}:{port}")
+    print(f"reading SQLite DB from {SmartFarmRequestHandler.current_db_path()}")
     server.serve_forever()
 
 def main():
-    parser = argparse.ArgumentParser(description="SmartFarm Control UI")
-    parser.add_argument("--db", default=DEFAULT_DB_PATH, help="SQLite database path")
+    parser = argparse.ArgumentParser(description="SFES Lab Control UI")
+    parser.add_argument("--db-dir", default=DEFAULT_DB_DIR, help="Directory for monthly SQLite DB files")
+    parser.add_argument("--db", default=None, help="Use one fixed SQLite DB path instead of monthly DB files")
     parser.add_argument("--host", default="0.0.0.0", help="HTTP host")
     parser.add_argument("--port", default=8000, type=int, help="HTTP port")
     args = parser.parse_args()
-    run_server(args.db, args.host, args.port)
+    run_server(args.db, args.db_dir, args.host, args.port)
 
 if __name__ == "__main__":
     main()

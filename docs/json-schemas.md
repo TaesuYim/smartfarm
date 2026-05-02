@@ -1,7 +1,7 @@
 <!-- File: docs/json-schemas.md -->
 # JSON Schemas
 
-MQTT payload JSON 구조 초안입니다. 현재 운영 대상은 `GH1`입니다.
+MQTT payload JSON 구조입니다. 현재 구현/운영 대상은 `GH1`이며, `GH2`는 향후 확장 대상으로만 둡니다.
 
 ## 1. 공통 필드
 
@@ -51,13 +51,23 @@ Topic:
 sf/gh1/sensors/weather
 ```
 
+기상청 데이터는 1시간에 한 번, 정시의 1분에 요청합니다. 예를 들어 `01:00` 데이터는 `01:01`에 받아옵니다.
+
 권장 필드:
 
 - `ts`
+- `fetched_at`
 - `source`
-- `region`
-- `outdoor_temp_c`
-- `outdoor_hum_pct`
+- `station_id`
+- `internal_temp_c`
+- `internal_hum_pct`
+- `ta`: 외기온도
+- `hm`: 외부습도
+- `rn`: 강수
+- `ws`: 풍속
+- `icsr`: 일사
+- `ss`: 일조
+- `qc_flags`
 
 인터넷/API 실패 시 publish를 생략하거나 값을 `null`로 보낼 수 있습니다.
 

@@ -1,8 +1,9 @@
 from contextlib import closing
+from datetime import datetime, timezone
 import sqlite3
 import unittest
 
-from rpi.logger.db import SENSOR_VALUE_COLUMNS, init_db, insert_sensor_snapshot
+from rpi.logger.db import SENSOR_VALUE_COLUMNS, init_db, insert_sensor_snapshot, monthly_db_path
 
 
 class SensorSnapshotSqliteTest(unittest.TestCase):
@@ -42,6 +43,14 @@ class SensorSnapshotSqliteTest(unittest.TestCase):
 
         for column in SENSOR_VALUE_COLUMNS:
             self.assertAlmostEqual(row[column], sample_payload[column], places=6)
+
+    def test_monthly_db_path_uses_year_and_month(self):
+        now = datetime(2026, 5, 3, 1, 1, tzinfo=timezone.utc)
+
+        db_path = monthly_db_path("data", now)
+
+        self.assertEqual(db_path.parent.name, "data")
+        self.assertEqual(db_path.name, "smartfarm_2026_05.sqlite3")
 
 
 if __name__ == "__main__":

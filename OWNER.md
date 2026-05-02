@@ -13,12 +13,13 @@
 - [docs/arduino-firmware-spec.md](docs/arduino-firmware-spec.md)
 
 ## 2. 현재 시스템 운영 방향
-- 온실 2동: `gh1`, `gh2`
-- MQTT 토픽은 온실별로 반드시 분리
+- 현재 구현/운용 온실: `GH1` (`gh1`)
+- 향후 확장 온실: `GH2` (`gh2`)
+- MQTT 토픽은 온실별로 반드시 분리하되 현재는 `sf/gh1/...`만 사용
 - UI는 실시간 모니터링, 액추에이터 제어, 과거 추세 탭을 제공
 - SQLite 저장은 UI와 분리된 logger 구조를 권장
 - Arduino heartbeat는 logger가 감시하고 상태를 기록하는 방향을 권장
-- DB 구조는 `docs/db-schema.md` 초안을 기준으로 계속 다듬는 중
+- DB는 월별 SQLite 파일(`smartfarm_YYYY_MM.sqlite3`)로 저장
 - 핀 배치는 `docs/pin-map.md`를 기준으로 관리
 
 ## 3. 현재 합의된 중요한 결정
@@ -30,6 +31,7 @@
   - fan RPM
 - Arduino 재부팅은 MQTT가 아니라 Raspberry Pi GPIO + 릴레이로 수행
 - UI는 각 탭별로 마지막 업데이트 시간 1개만 표시
+- 기상청 데이터는 매시 1분에 정시 데이터를 요청하고, 받아온 시각도 DB에 저장
 
 ## 4. 센서/하드웨어 관련 메모
 - ADS1115는 3.3V 기준으로 사용
@@ -57,6 +59,5 @@
 ## 7. 나중에 채워야 할 TODO
 - 실제 Raspberry Pi 실행/배포 절차
 - systemd 서비스 이름과 실행 커맨드
-- DB 스키마 초안 검토 및 최종안 확정
 - KMA API 설정값 정리
 - 실제 배선도 문서

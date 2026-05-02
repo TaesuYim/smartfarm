@@ -22,10 +22,10 @@
 | `mqtt/test_mqtt_publish_heartbeat.ino` | ❌ placeholder | |
 | `integration/test_full_control_node.ino` | ❌ placeholder | |
 
-> 핀 번호 등 하드웨어 세부사항은 [docs/pin-map.md](../../docs/pin-map.md) 확정 후 반영 예정
+> 핀 번호 등 하드웨어 세부사항은 [docs/pin-map.md](../../docs/pin-map.md)를 기준으로 합니다.
 
 ## 2. 실행 메모
 - Arduino IDE에서 스케치를 하나씩 열어 업로드
 - 시리얼 모니터: `115200` baud
 - 고위험 부하(히터, 펌프, 창문 모터)는 마지막에 연결
-- 테스트 결과는 운영 펌웨어(`control_node/`)에 정리하여 반영
+- 테스트 결과는 운영 펌웨어(`control_node_1/`, `control_node_2/`)에 정리하여 반영

@@ -10,7 +10,8 @@
 - 다른 해상도에서도 깨지지 않도록 반응형으로 구현
 - 브라우저 전체 화면 또는 kiosk 모드 사용
 - 긴 단일 페이지가 아니라 탭 기반 화면 구성
-- 현재 운용 대상 온실은 `GH1`만 사용
+- 현재 구현/운용 대상 온실은 `GH1`만 사용
+- `GH2`는 향후 확장 대상으로만 둠
 - UI는 화면 표시와 사용자 입력만 담당
 - 필요한 Python 백그라운드 프로그램은 별도 supervisor/systemd가 실행
 - 향후 Raspberry Pi 부팅 시 supervisor/systemd가 UI와 백그라운드 프로그램을 자동 실행
@@ -49,6 +50,12 @@
 - Arduino heartbeat 상태 표시
 - Arduino 리셋 버튼
 - 날씨 정보 표시
+
+현재 코드 구현 상태:
+
+- 최신 센서값 표시
+- actuator 제어/상태 표시
+- graph/settings/weather/heartbeat 상세 표시는 추가 구현 필요
 
 표시 대상 센서 항목:
 
@@ -107,7 +114,7 @@ Arduino 리셋:
 - 사용자가 제어값을 변경하면 MQTT command를 publish
 - 동시에 변경된 제어값을 DB에 저장
 - 저장 대상은 `actuator_cmd` 테이블
-- Arduino가 실제 적용 상태를 publish하면 `actuator_state` 테이블에 저장
+- Arduino가 실제 적용 상태를 publish하면 `actuator_history` 테이블에 저장하고 `actuator_latest`를 갱신
 
 ## 6. 그래프 탭
 
@@ -152,7 +159,7 @@ Arduino 리셋:
 sensor_hub -> MQTT -> logger -> monthly SQLite DB -> SFES Lab UI
 SFES Lab UI -> MQTT command -> Arduino control node
 Arduino control node -> MQTT state/heartbeat/RPM -> logger -> monthly SQLite DB
-weather_service -> MQTT -> logger -> monthly SQLite DB -> SFES Lab UI
+weather_service -> KMA hourly fetch at HH:01 -> MQTT -> logger -> monthly SQLite DB -> SFES Lab UI
 ```
 
 supervisor/systemd가 함께 실행할 프로그램 후보:

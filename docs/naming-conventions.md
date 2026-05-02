@@ -18,7 +18,7 @@ UI, logger, Raspberry Pi, Arduino가 같은 이름을 쓰도록 하는 규칙입
 - MQTT topic: `gh1`
 - DB 값: `gh1`
 
-`gh2`는 현재 구현 대상에서 제외합니다. 다만 topic 구조는 나중 확장을 위해 `sf/gh1/...` 형태를 유지합니다.
+`gh2`는 현재 구현 대상에서 제외합니다. 다만 topic 구조는 향후 확장을 위해 `sf/<greenhouse>/...` 패턴을 유지합니다. 현재 실제 운영 topic은 `sf/gh1/...`만 사용합니다.
 
 ## 3. MQTT Topic
 

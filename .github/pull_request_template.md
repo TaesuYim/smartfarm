@@ -7,8 +7,11 @@
 - [ ] .agents/rules/ 확인
 - [ ] docs/mqtt-topics.md 확인
 - [ ] docs/ui-spec.md 확인
+- [ ] docs/db-schema.md 확인
+- [ ] docs/pin-map.md 확인
 - [ ] docs/arduino-firmware-spec.md 확인
 - [ ] docs/naming-conventions.md 확인
+- [ ] docs/environment-config.md 확인
 
 ## 이번 변경이 영향 주는 온실
 - [ ] gh1
@@ -29,6 +32,8 @@
 - [ ] MQTT 토픽/키가 바뀌면 docs/mqtt-topics.md를 수정했다
 - [ ] UI 요구사항이 바뀌면 docs/ui-spec.md를 수정했다
 - [ ] Arduino 동작이 바뀌면 docs/arduino-firmware-spec.md를 수정했다
+- [ ] DB 저장 구조가 바뀌면 docs/db-schema.md를 수정했다
+- [ ] 핀/배선이 바뀌면 docs/pin-map.md를 수정했다
 - [ ] 네이밍이 바뀌면 docs/naming-conventions.md를 수정했다
 
 ## 하드웨어 안전 체크리스트

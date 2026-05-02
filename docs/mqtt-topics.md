@@ -1,7 +1,7 @@
 <!-- File: docs/mqtt-topics.md -->
 # MQTT Topics
 
-이 문서는 SmartFarm MQTT topic과 payload 계약을 정의합니다. 현재 운영 대상은 `GH1` 1개이며 topic namespace는 향후 확장을 위해 `sf/gh1/...` 형식을 유지합니다.
+이 문서는 SmartFarm MQTT topic과 payload 계약을 정의합니다. 현재 구현/운영 대상은 `GH1` 1개이며, `GH2`는 향후 확장 대상으로만 둡니다.
 
 ## 1. 기본 규칙
 
@@ -17,9 +17,9 @@
 | Topic | 방향 | 저장 테이블 | 목적 |
 | --- | --- | --- | --- |
 | `sf/gh1/sensors/snapshot` | sensor hub -> broker | `sensor_snapshot` | 완성형 센서 스냅샷 |
-| `sf/gh1/sensors/weather` | weather service -> broker | `weather` | 외부 날씨 정보 |
+| `sf/gh1/sensors/weather` | weather service -> broker | `weather` | 기상청/내부 온습도 정보 |
 | `sf/gh1/actuators/cmd` | UI -> Arduino | `actuator_cmd` | actuator 제어 명령 |
-| `sf/gh1/actuators/state` | Arduino -> broker | `actuator_state` | 실제 적용 상태 |
+| `sf/gh1/actuators/state` | Arduino -> broker | `actuator_history` | 실제 적용 상태 |
 | `sf/gh1/actuators/heartbeat` | Arduino -> broker | `heartbeat` | Arduino 생존 신호 |
 | `sf/gh1/actuators/fan-rpm` | Arduino -> broker | `fan_rpm` | 팬 RPM |
 | `sensor/ads1115_*/+/raw` | sensor test -> broker | `ads_reading` | ADS raw 디버깅 |
@@ -52,17 +52,34 @@ ADS1115 값을 변환한 완성형 센서 payload입니다.
 
 ## 4. `sf/gh1/sensors/weather`
 
-외부 날씨 정보입니다. 인터넷/API 실패 시 publish를 생략하거나 값 일부를 `null`로 보낼 수 있습니다.
+기상청 및 내부 온습도 정보입니다. weather service는 1시간에 한 번, 정시의 1분에 요청합니다. 예를 들어 `01:00` 데이터는 `01:01`에 요청합니다. `ts`는 관측 데이터 시각이고, `fetched_at`은 실제로 기상청 정보를 받아온 시각입니다.
 
 ```json
 {
-  "ts": "2026-04-30T10:00:00+09:00",
-  "source": "weather_service",
-  "region": "local",
-  "outdoor_temp_c": 21.4,
-  "outdoor_hum_pct": 62.0
+  "ts": "2026-05-03T01:00:00+09:00",
+  "fetched_at": "2026-05-03T01:01:00+09:00",
+  "source": "kma",
+  "station_id": "146",
+  "internal_temp_c": 24.7,
+  "internal_hum_pct": 62.5,
+  "ta": 18.2,
+  "hm": 72.0,
+  "rn": 0.0,
+  "ws": 1.8,
+  "icsr": 0.0,
+  "ss": 0.0,
+  "qc_flags": {
+    "ta": 0,
+    "hm": 0,
+    "rn": 0,
+    "ws": 0,
+    "icsr": 0,
+    "ss": 0
+  }
 }
 ```
+
+인터넷/API 실패 시 publish를 생략하거나 값 일부를 `null`로 보낼 수 있습니다.
 
 ## 5. `sf/gh1/actuators/cmd`
 

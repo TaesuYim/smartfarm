@@ -69,6 +69,10 @@ MQTT 메시지를 받아 SQLite에 저장합니다.
 
 인터넷 접속 실패 시 서비스 전체를 죽이지 않고 publish를 생략하거나 빈 값을 보냅니다.
 
+기상청 데이터는 매시 정시 데이터 기준으로 정시의 1분에 요청합니다. 예를 들어 `01:00` 데이터는 `01:01`에 요청합니다.
+
+저장 대상은 내부온도, 내부습도, KMA `ta`, `hm`, `rn`, `ws`, `icsr`, `ss`, QC 플래그, 그리고 실제로 받아온 시각입니다.
+
 ### `supervisor`
 
 여러 Python 프로그램과 kiosk browser 실행을 관리합니다.
@@ -79,7 +83,7 @@ MQTT 메시지를 받아 SQLite에 저장합니다.
 
 ```bash
 python -m rpi.logger.mqtt_logger --db-dir data
-python -m rpi.ui.app --db smartfarm.sqlite3 --host 127.0.0.1 --port 8000
+python -m rpi.ui.app --db-dir data --host 127.0.0.1 --port 8000
 ```
 
 월별 DB 전환이 구현되면 UI와 logger 모두 같은 DB directory 설정을 사용해야 합니다.
@@ -97,5 +101,5 @@ chromium-browser --kiosk http://127.0.0.1:8000
 - sensor hub 운영 파일 위치
 - weather service API 종류
 - supervisor/systemd service 파일 구조
-- 월별 DB 파일 저장 경로
+- 월을 넘는 그래프 조회 방식
 - Arduino reset helper의 GPIO 핀과 릴레이 회로

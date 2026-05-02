@@ -16,13 +16,14 @@
 | `actuators/test_rpi_gpio_relay_reset.py` | ✅ 구현 | Arduino 리셋용 GPIO 릴레이 점검 |
 | `actuators/test_mqtt_command_publish.py` | ❌ placeholder | |
 | `integration/test_sensor_to_mqtt.py` | ✅ 구현 | ADS1115 → 로컬 MQTT smoke test (임시 raw topic) |
-| `integration/test_mqtt_to_sqlite.py` | ❌ placeholder | |
+| `integration/test_mqtt_to_sqlite.py` | ✅ 구현 | MQTT topic payload → SQLite 저장 계약 |
+| `integration/test_sensor_snapshot_publish.py` | ✅ 구현 | ADS1115 센서 snapshot MQTT publish |
 | `integration/test_end_to_end_local.py` | ❌ placeholder | |
-| `services/test_logger_write_sqlite.py` | ❌ placeholder | |
-| `services/test_ui_db_read_latest.py` | ❌ placeholder | |
-| `services/test_weather_kma_fetch.py` | ❌ placeholder | |
+| `services/test_logger_write_sqlite.py` | ✅ 구현 | sensor snapshot 저장 및 월별 DB 파일명 |
+| `services/test_ui_db_read_latest.py` | ✅ 구현 | UI 최신 센서값 조회 |
+| `services/test_weather_kma_fetch.py` | ✅ 구현 | KMA API 수동 fetch 실험 |
 
-> 핀 번호·I2C 주소 등 하드웨어 세부사항은 [docs/pin-map.md](../../docs/pin-map.md) 확정 후 반영 예정
+> 핀 번호·I2C 주소 등 하드웨어 세부사항은 [docs/pin-map.md](../../docs/pin-map.md)를 기준으로 합니다.
 
 ## 2. 실행 전 주의
 - Raspberry Pi 실기 환경, I2C/GPIO 권한, 센서 연결 필요

@@ -61,7 +61,8 @@ smartfarm/
 
 - 1024x600 기준 탭 UI 제공
 - 브라우저 전체 화면/kiosk 모드에서 사용
-- sensor, actuator, heartbeat, weather, graph 화면 제공
+- 현재 구현: 최신 센서값과 actuator 제어/상태 화면
+- 목표: heartbeat, weather, graph, settings 화면까지 확장
 - 화면 표시와 사용자 입력 처리 담당
 - Python 서비스 실행은 UI가 직접 하지 않고 supervisor/systemd가 담당
 
@@ -90,12 +91,14 @@ ADS1115 센서값을 읽고 완성형 `sensor_snapshot` MQTT payload를 publish�
 
 ### `rpi/weather_service/`
 
-외부 날씨 API를 조회하고 MQTT로 publish하는 코드 위치입니다.
+기상청 API를 조회하고 MQTT로 publish하는 코드 위치입니다.
 
 규칙:
 
 - 인터넷 접속 실패 시 서비스 전체를 죽이지 않음
 - 실패 시 weather publish를 생략하거나 빈 값을 publish
+- 매시 정시 데이터는 정시의 1분에 요청
+- 내부온도/내부습도와 KMA `ta`, `hm`, `rn`, `ws`, `icsr`, `ss`, QC 플래그를 함께 publish
 
 ### `rpi/supervisor/`
 
@@ -166,8 +169,9 @@ weather_service script
 ## 6. 구조 설계 원칙
 
 - 코드 디렉터리는 기능 단위로 나눕니다.
-- 현재 운영 대상은 `GH1`만 사용합니다.
-- topic 구조는 향후 확장을 위해 `sf/gh1/...` 형식을 유지합니다.
+- 현재 구현/운영 대상은 `GH1`만 사용합니다.
+- `GH2`는 향후 확장 대상으로만 둡니다.
+- topic 구조는 현재 `sf/gh1/...`를 사용하고, 확장 시 `sf/<greenhouse>/...` 패턴을 유지합니다.
 - `gh1`, `gh2`용 코드를 따로 복제하지 않습니다.
 - 문서는 최소 개수로 유지하되 MQTT, UI, DB, 핀맵, 펌웨어, 네이밍 규칙은 분리 문서로 유지합니다.
 
