@@ -144,6 +144,7 @@ ui_refresh_sec
 measurement_interval_sec
 heartbeat_timeout_sec
 monitoring_graph_minutes
+weather_fetch_minute
 ```
 
 ## 9. 확인 필요

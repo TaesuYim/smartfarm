@@ -2,12 +2,13 @@ import argparse
 from contextlib import closing
 import json
 import sqlite3
-import subprocess
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+import paho.mqtt.client as mqtt
 
 # Add project root to sys.path
 project_root = str(Path(__file__).resolve().parents[2])
@@ -85,6 +86,22 @@ def fetch_latest_data(db_path, greenhouse):
         print(f"DB Fetch Error: {e}")
         return None, None
 
+_mqtt_client = None
+
+def _get_mqtt_client():
+    global _mqtt_client
+    if _mqtt_client is None:
+        _mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    return _mqtt_client
+
+def connect_mqtt(host="127.0.0.1", port=1883):
+    client = _get_mqtt_client()
+    try:
+        client.connect(host, port, 60)
+        client.loop_start()
+    except Exception as e:
+        print(f"MQTT connect error: {e}")
+
 def publish_mqtt(greenhouse, command_dict):
     topic = f"sf/{greenhouse}/actuators/cmd"
     command_dict = dict(command_dict)
@@ -92,8 +109,9 @@ def publish_mqtt(greenhouse, command_dict):
     command_dict.setdefault("source", "sfes_lab_ui")
     payload = json.dumps(command_dict)
     try:
-        subprocess.run(["mosquitto_pub", "-t", topic, "-m", payload], check=True)
-        return True
+        client = _get_mqtt_client()
+        result = client.publish(topic, payload)
+        return result.rc == mqtt.MQTT_ERR_SUCCESS
     except Exception as e:
         print(f"MQTT Publish Error: {e}")
         return False
@@ -449,7 +467,10 @@ def main():
     parser.add_argument("--db", default=None, help="Use one fixed SQLite DB path instead of monthly DB files")
     parser.add_argument("--host", default="0.0.0.0", help="HTTP host")
     parser.add_argument("--port", default=8000, type=int, help="HTTP port")
+    parser.add_argument("--mqtt-host", default="127.0.0.1", help="MQTT broker host")
+    parser.add_argument("--mqtt-port", default=1883, type=int, help="MQTT broker port")
     args = parser.parse_args()
+    connect_mqtt(args.mqtt_host, args.mqtt_port)
     run_server(args.db, args.db_dir, args.host, args.port)
 
 if __name__ == "__main__":

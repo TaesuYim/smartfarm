@@ -6,6 +6,9 @@
 
 // ==========================================
 // Network settings
+// ⚠️ 실제 배포 시 WiFi 비밀번호를 직접 코드에 넣지 마세요.
+//    레포를 public으로 전환할 경우 반드시 변경하세요.
+//    참고: .env.example
 // ==========================================
 const char* WIFI_SSID = "iptime_2G";
 const char* WIFI_PASS = "45612352";
@@ -49,7 +52,7 @@ AccelStepper stepper(AccelStepper::DRIVER, PIN_SHADING_PUL, PIN_SHADING_DIR);
 // ==========================================
 struct ActuatorState {
   bool valves[7] = {false, false, false, false, false, false, false};
-  int led_r = 0, led_g = 0, led_b = 0, led_bright = 50;
+  int led_r = 0, led_g = 0, led_b = 0, led_bright = 100;
   String shading_cmd = "stop";
   unsigned long last_seq = 0;
 };
@@ -238,7 +241,7 @@ void setup() {
   }
   strip.show(); // 물리적 신호 전송
   delay(100);   // 신호가 안정될 때까지 아주 짧은 대기
-  strip.setBrightness(50);
+  strip.setBrightness(100);
   Serial.println("neopixel 100 LEDs cleared at startup");
 
   for(int i=0; i<7; i++) {

@@ -58,6 +58,7 @@ Raspberry Pi 5와 Arduino UNO R4 WiFi를 사용해 소형 온실을 제어하는
 smartfarm/
 ├─ OWNER.md
 ├─ README.md
+├─ .env.example
 ├─ .agents/
 │  └─ rules/
 │     ├─ 01-project-overview.md
@@ -73,7 +74,8 @@ smartfarm/
 │  ├─ pin-map.md
 │  ├─ arduino-firmware-spec.md
 │  ├─ naming-conventions.md
-│  └─ json-schemas.md
+│  ├─ json-schemas.md
+│  └─ environment-config.md
 ├─ rpi/
 │  ├─ README.md
 │  ├─ requirements.txt
@@ -81,6 +83,7 @@ smartfarm/
 │  ├─ logger/
 │  ├─ ui/
 │  ├─ weather_service/     # planned
+│  ├─ supervisor/          # planned
 │  └─ tests/
 └─ arduino/
    ├─ README.md

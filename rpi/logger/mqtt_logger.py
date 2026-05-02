@@ -70,7 +70,7 @@ class MonthlyDbManager:
 
     @property
     def description(self):
-        return f"{self.db_dir}\\smartfarm_YYYY_MM.sqlite3"
+        return str(self.db_dir / "smartfarm_YYYY_MM.sqlite3")
 
     def close(self):
         if self.conn is not None:

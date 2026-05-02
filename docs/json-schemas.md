@@ -162,3 +162,10 @@ sf/gh1/actuators/fan-rpm
 설정 탭의 `measurement_interval_sec`는 DB 저장 주기가 아니라 sensor hub의 측정/publish 주기입니다.
 
 logger는 MQTT 메시지를 수신하는 즉시 월별 DB에 저장합니다.
+
+## 9. 관련 문서
+
+- [environment-config.md](environment-config.md) — 네트워크/브로커 설정
+- [mqtt-topics.md](mqtt-topics.md) — MQTT 토픽 구조와 저장 테이블 매핑
+- [naming-conventions.md](naming-conventions.md) — 필드 네이밍 규칙
+

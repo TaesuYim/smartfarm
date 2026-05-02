@@ -53,9 +53,10 @@
 
 현재 코드 구현 상태:
 
+- **`rpi/ui/app.py`는 테스트/프로토타입 버전**이며, 추후 탭 기반 정식 UI를 별도 구현할 예정
 - 최신 센서값 표시
 - actuator 제어/상태 표시
-- graph/settings/weather/heartbeat 상세 표시는 추가 구현 필요
+- 탭 구조, graph, settings, weather, heartbeat 상세 표시는 정식 UI에서 구현 예정
 
 표시 대상 센서 항목:
 

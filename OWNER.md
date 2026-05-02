@@ -11,6 +11,9 @@
 - [docs/db-schema.md](docs/db-schema.md)
 - [docs/pin-map.md](docs/pin-map.md)
 - [docs/arduino-firmware-spec.md](docs/arduino-firmware-spec.md)
+- [docs/naming-conventions.md](docs/naming-conventions.md)
+- [docs/json-schemas.md](docs/json-schemas.md)
+- [docs/environment-config.md](docs/environment-config.md)
 
 ## 2. 현재 시스템 운영 방향
 - 현재 구현/운용 온실: `GH1` (`gh1`)

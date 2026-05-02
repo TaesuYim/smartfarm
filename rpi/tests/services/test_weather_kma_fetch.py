@@ -86,7 +86,7 @@ def main():
         "tm": observed_at.strftime("%Y%m%d%H%M"),
         "stn": "146",
         "help": "1",
-        "authKey": "zLEb4lzhRtixG-Jc4VbY0g",
+        "authKey": os.environ.get("KMA_AUTH_KEY", ""),
     }
 
     url = BASE_URL + "?" + urllib.parse.urlencode(params)

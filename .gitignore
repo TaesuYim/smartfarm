@@ -3,8 +3,12 @@ __pycache__/
 
 sensor_snapshot_*/
 sensor_snapshot_*.sqlite3
+smartfarm.sqlite3
 data/
 smartfarm_*.sqlite3
 *.sqlite3-journal
 *.sqlite3-wal
 *.sqlite3-shm
+
+weather_data.csv
+.env

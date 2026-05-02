@@ -22,7 +22,7 @@ Arduino control node는 아래 topic을 사용합니다.
 | `sf/gh1/actuators/cmd` | subscribe | UI 제어 명령 수신 |
 | `sf/gh1/actuators/state` | publish | 실제 적용 상태 보고 |
 | `sf/gh1/actuators/heartbeat` | publish | online/offline 판단 |
-| `sf/gh1/actuators/fan-rpm` | publish | 팬 RPM 보고 |
+| `sf/gh1/actuators/fan-rpm` | publish | 팬 RPM 보고 (추후 구현) |
 
 ## 3. Command 처리
 
@@ -70,7 +70,7 @@ ON/OFF 제어:
 LED 제어:
 
 - RGB
-- brightness
+- brightness (기본값: 100%)
 
 차광스크린 제어:
 
@@ -92,6 +92,8 @@ LED 제어:
 
 `seq`는 UI command와 Arduino state를 연결하는 값입니다.
 
+Arduino는 `ts`에 빈 문자열을 보내며, logger가 수신 시각으로 대체하여 기록합니다.
+
 ## 6. Heartbeat
 
 Arduino는 주기적으로 `sf/gh1/actuators/heartbeat`를 publish합니다.
@@ -103,6 +105,8 @@ Arduino는 주기적으로 `sf/gh1/actuators/heartbeat`를 publish합니다.
 UI는 마지막 heartbeat 수신 시각을 기준으로 LED 상태를 표시합니다.
 
 ## 7. Fan RPM
+
+상태: **추후 구현 예정** — 현재 `control_node_1` 펌웨어에 미구현
 
 팬 RPM 측정이 가능한 경우 Arduino는 `sf/gh1/actuators/fan-rpm`을 publish합니다.
 
@@ -137,5 +141,6 @@ UI는 마지막 heartbeat 수신 시각을 기준으로 LED 상태를 표시합�
 
 - MQTT 연결 끊김 시 actuator 상태 유지 정책
 - window 개도율 계산 방식
+- fan RPM 입력 핀 배치 및 회로 (추후 구현 시 `docs/pin-map.md`에 추가)
 - fan RPM publish 주기
 - relay reset helper의 실제 회로와 GPIO 핀

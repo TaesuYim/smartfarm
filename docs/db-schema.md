@@ -236,27 +236,27 @@ CREATE TABLE IF NOT EXISTS actuator_latest (
     source          TEXT,
     seq             INTEGER,
     received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
-    vent_fan_pwm_pct     INTEGER,
-    circ_fan_1_pwm_pct   INTEGER,
-    circ_fan_2_pwm_pct   INTEGER,
-    heater_1_pwm_pct     INTEGER,
-    heater_2_pwm_pct     INTEGER,
-    pump_pwm_pct         INTEGER,
-    mist_on              BOOLEAN,
-    window_1_cmd         TEXT,
-    window_2_cmd         TEXT,
-    valve_pot_1_on       BOOLEAN,
-    valve_pot_2_on       BOOLEAN,
-    valve_pot_3_on       BOOLEAN,
-    valve_pot_4_on       BOOLEAN,
-    valve_pot_5_on       BOOLEAN,
-    valve_pot_6_on       BOOLEAN,
-    valve_fog_on         BOOLEAN,
-    led_r                INTEGER,
-    led_g                INTEGER,
-    led_b                INTEGER,
-    led_brightness_pct   INTEGER,
-    shading_screen_cmd   TEXT
+    vent_fan_pwm_pct        INTEGER,
+    circ_fan_1_pwm_pct      INTEGER,
+    circ_fan_2_pwm_pct      INTEGER,
+    heater_1_pwm_pct        INTEGER,
+    heater_2_pwm_pct        INTEGER,
+    pump_pwm_pct            INTEGER,
+    valve_pot_1_on          INTEGER,
+    valve_pot_2_on          INTEGER,
+    valve_pot_3_on          INTEGER,
+    valve_pot_4_on          INTEGER,
+    valve_pot_5_on          INTEGER,
+    valve_pot_6_on          INTEGER,
+    valve_fog_on            INTEGER,
+    mist_on                 INTEGER,
+    window_1_cmd            TEXT,
+    window_2_cmd            TEXT,
+    shading_screen_cmd      TEXT,
+    led_r                   INTEGER,
+    led_g                   INTEGER,
+    led_b                   INTEGER,
+    led_brightness_pct      INTEGER
 );
 ```
 
@@ -278,6 +278,7 @@ CREATE TABLE IF NOT EXISTS app_setting (
 | `measurement_interval_sec` | `1` | sensor hub 측정/publish 주기 |
 | `heartbeat_timeout_sec` | `10` | heartbeat OFF 판단 기준 |
 | `weather_fetch_minute` | `1` | 매시 1분 기상청 요청 |
+| `monitoring_graph_minutes` | `60` | 모니터링 탭 기본 그래프 기간 |
 
 ## 12. `ads_reading`
 

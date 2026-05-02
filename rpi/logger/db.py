@@ -181,27 +181,27 @@ CREATE TABLE IF NOT EXISTS actuator_latest (
     seq             INTEGER,
     received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
 
-    vent_fan_pwm_pct     INTEGER,
-    circ_fan_1_pwm_pct   INTEGER,
-    circ_fan_2_pwm_pct   INTEGER,
-    heater_1_pwm_pct     INTEGER,
-    heater_2_pwm_pct     INTEGER,
-    pump_pwm_pct         INTEGER,
-    mist_on              BOOLEAN,
-    window_1_cmd         TEXT,
-    window_2_cmd         TEXT,
-    valve_pot_1_on       BOOLEAN,
-    valve_pot_2_on       BOOLEAN,
-    valve_pot_3_on       BOOLEAN,
-    valve_pot_4_on       BOOLEAN,
-    valve_pot_5_on       BOOLEAN,
-    valve_pot_6_on       BOOLEAN,
-    valve_fog_on         BOOLEAN,
-    led_r                INTEGER,
-    led_g                INTEGER,
-    led_b                INTEGER,
-    led_brightness_pct   INTEGER,
-    shading_screen_cmd   TEXT
+    vent_fan_pwm_pct        INTEGER,
+    circ_fan_1_pwm_pct      INTEGER,
+    circ_fan_2_pwm_pct      INTEGER,
+    heater_1_pwm_pct        INTEGER,
+    heater_2_pwm_pct        INTEGER,
+    pump_pwm_pct            INTEGER,
+    valve_pot_1_on          INTEGER,
+    valve_pot_2_on          INTEGER,
+    valve_pot_3_on          INTEGER,
+    valve_pot_4_on          INTEGER,
+    valve_pot_5_on          INTEGER,
+    valve_pot_6_on          INTEGER,
+    valve_fog_on            INTEGER,
+    mist_on                 INTEGER,
+    window_1_cmd            TEXT,
+    window_2_cmd            TEXT,
+    shading_screen_cmd      TEXT,
+    led_r                   INTEGER,
+    led_g                   INTEGER,
+    led_b                   INTEGER,
+    led_brightness_pct      INTEGER
 );
 """
 
@@ -267,6 +267,11 @@ def now_kst_iso():
     return datetime.now(KST).isoformat(timespec="seconds")
 
 
+def _normalize_ts(value):
+    """Treat empty string as None so callers fall back to now_kst_iso()."""
+    return value if value else None
+
+
 def monthly_db_path(db_dir=DEFAULT_DB_DIR, now=None):
     current = now or datetime.now(KST)
     if current.tzinfo is None:
@@ -318,7 +323,7 @@ def _json_or_text(value):
 
 
 def insert_sensor_snapshot(conn, greenhouse, payload):
-    ts = payload.get("ts") or now_kst_iso()
+    ts = _normalize_ts(payload.get("ts")) or now_kst_iso()
     columns = ("greenhouse", "ts", "source", *SENSOR_VALUE_COLUMNS)
     values = [greenhouse, ts, payload.get("source")]
     values.extend(payload.get(column) for column in SENSOR_VALUE_COLUMNS)
@@ -340,8 +345,8 @@ def insert_sensor_snapshot(conn, greenhouse, payload):
 
 
 def insert_weather(conn, greenhouse, payload):
-    ts = payload.get("ts") or payload.get("observed_at") or now_kst_iso()
-    fetched_at = payload.get("fetched_at") or payload.get("requested_at") or now_kst_iso()
+    ts = _normalize_ts(payload.get("ts")) or _normalize_ts(payload.get("observed_at")) or now_kst_iso()
+    fetched_at = _normalize_ts(payload.get("fetched_at")) or _normalize_ts(payload.get("requested_at")) or now_kst_iso()
     columns = (
         "greenhouse",
         "ts",
@@ -371,7 +376,7 @@ def insert_weather(conn, greenhouse, payload):
 
 
 def insert_actuator_cmd(conn, greenhouse, payload):
-    ts = payload.get("ts") or now_kst_iso()
+    ts = _normalize_ts(payload.get("ts")) or now_kst_iso()
     columns = ("greenhouse", "ts", "source", "seq", *ACTUATOR_VALUE_COLUMNS)
     values = [greenhouse, ts, payload.get("source") or "ui", payload.get("seq")]
     values.extend(payload.get(column) for column in ACTUATOR_VALUE_COLUMNS)
@@ -380,7 +385,7 @@ def insert_actuator_cmd(conn, greenhouse, payload):
 
 
 def insert_actuator_state(conn, greenhouse, payload):
-    ts = payload.get("ts") or now_kst_iso()
+    ts = _normalize_ts(payload.get("ts")) or now_kst_iso()
     conn.execute(
         "INSERT INTO actuator_history (greenhouse, ts, source, payload) VALUES (?, ?, ?, ?)",
         (greenhouse, ts, payload.get("source"), json.dumps(payload, ensure_ascii=False)),
@@ -425,7 +430,7 @@ def insert_heartbeat(conn, greenhouse, payload):
     columns = ("greenhouse", "ts", "source", "uptime_ms")
     values = [
         greenhouse,
-        payload.get("ts") or now_kst_iso(),
+        _normalize_ts(payload.get("ts")) or now_kst_iso(),
         payload.get("source"),
         payload.get("uptime_ms"),
     ]
@@ -444,7 +449,7 @@ def insert_fan_rpm(conn, greenhouse, payload):
     )
     values = [
         greenhouse,
-        payload.get("ts") or now_kst_iso(),
+        _normalize_ts(payload.get("ts")) or now_kst_iso(),
         payload.get("source"),
         payload.get("vent_fan_rpm"),
         payload.get("circ_fan_1_rpm"),

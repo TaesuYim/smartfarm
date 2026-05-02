@@ -9,6 +9,7 @@
 smartfarm/
 ├─ OWNER.md
 ├─ README.md
+├─ .env.example
 ├─ .agents/
 │  └─ rules/
 │     ├─ 01-project-overview.md
@@ -127,7 +128,7 @@ Arduino Node 1 actuator 제어 firmware 위치입니다.
 - 창문 1, 2 제어
 - `sf/gh1/actuators/state` publish
 - `sf/gh1/actuators/heartbeat` publish
-- 필요 시 fan RPM publish
+- 필요 시 fan RPM publish (추후 구현 예정)
 
 ### `arduino/control_node_2/`
 
