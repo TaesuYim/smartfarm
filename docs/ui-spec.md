@@ -6,6 +6,7 @@
 ## 1. 기본 방향
 
 - UI 이름: `SFES Lab`
+- **UI 프레임워크: Streamlit** (`rpi/ui/app_v2.py`)
 - 대상 화면: Raspberry Pi 모니터 기준 `1280x800`
 - 대상 디스플레이: 10.1 inch IPS 1280×800, 정전식 터치
 - 실제 디스플레이 사이즈: 216.57mm × 135.36mm
@@ -26,7 +27,7 @@
 
 | 탭 | 목적 |
 | --- | --- |
-| 모니터링 | 현재 센서값, 최근 추세, Arduino heartbeat, 날씨 확인 |
+| 모니터링 | 현재 센서값, Arduino heartbeat, 날씨 확인 (성능 위해 그래프 제외) |
 | 제어 | actuator 제어값 입력 및 명령 전송 |
 | 그래프 | 사용자가 선택한 기간의 DB 추세 분석 |
 | 설정 | 화면 업데이트 주기와 센서 측정 주기 설정 |
@@ -48,17 +49,20 @@
 필수 요소:
 
 - 최신 `sensor_snapshot` 값 표시
-- 현재 시간부터 사용자가 설정한 기간까지의 추세 그래프 1개 이상 표시
 - Arduino heartbeat 상태 표시
 - Arduino 리셋 버튼
 - 날씨 정보 표시
 
+**참고**: 라즈베리 파이의 리소스 제약으로 인한 성능 저하(렉)를 방지하기 위해, 실시간 그래프는 모니터링 탭에서 제외되었습니다. 상세 추세는 '그래프' 탭에서 확인할 수 있습니다.
+
 현재 코드 구현 상태:
 
-- **`rpi/ui/app.py`는 테스트/프로토타입 버전**이며, 추후 탭 기반 정식 UI를 별도 구현할 예정
-- 최신 센서값 표시
-- actuator 제어/상태 표시
-- 탭 구조, graph, settings, weather, heartbeat 상세 표시는 정식 UI에서 구현 예정
+- **`rpi/ui/app.py`**: 초기 프로토타입 (Python HTTP 서버 + 인라인 HTML)
+- **`rpi/ui/app_v2.py`**: Streamlit 기반 정식 UI (탭 4개 구현 완료)
+  - 모니터링: 센서값, 날씨, heartbeat, Arduino 리셋 (최적화를 위해 그래프 제거)
+  - 제어: PWM 슬라이더, ON/OFF 토글, 창문/스크린, LED RGB (실시간 즉시 전송)
+  - 그래프: 기간별 센서 추세 분석
+  - 설정: 업데이트 주기, heartbeat 타임아웃 등
 
 표시 대상 센서 항목:
 
@@ -192,10 +196,17 @@ UI 자체는 위 프로세스들을 직접 subprocess로 실행하지 않습니�
 
 운영 시 Raspberry Pi 브라우저는 전체 화면 또는 kiosk 모드로 실행합니다.
 
-예상 방식:
+Streamlit 서버 실행:
 
 ```bash
-chromium-browser --kiosk http://127.0.0.1:8000
+cd /home/pi/smartfarm/smartfarm
+streamlit run rpi/ui/app_v2.py --server.port 8501 --server.headless true
+```
+
+Kiosk 브라우저 실행:
+
+```bash
+chromium-browser --kiosk http://127.0.0.1:8501
 ```
 
 정확한 실행 명령은 Raspberry Pi OS와 설치된 브라우저에 맞춰 조정합니다.

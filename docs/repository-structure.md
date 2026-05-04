@@ -61,9 +61,11 @@ smartfarm/
 역할:
 
 - 1280x800 기준 탭 UI 제공
+- **UI 프레임워크: Streamlit** (`app_v2.py`)
 - 브라우저 전체 화면/kiosk 모드에서 사용
-- 현재 구현: 최신 센서값과 actuator 제어/상태 화면
-- 목표: heartbeat, weather, graph, settings 화면까지 확장
+- `app.py`: 초기 프로토타입 (Python HTTP 서버 + 인라인 HTML)
+- `app_v2.py`: Streamlit 기반 정식 UI (탭 4개: 모니터링, 제어, 그래프, 설정)
+- `.streamlit/config.toml`: Streamlit 테마 및 서버 설정
 - 화면 표시와 사용자 입력 처리 담당
 - Python 서비스 실행은 UI가 직접 하지 않고 supervisor/systemd가 담당
 
