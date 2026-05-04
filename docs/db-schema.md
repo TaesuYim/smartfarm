@@ -40,13 +40,12 @@ smartfarm_2026_06.sqlite3
 | 테이블 | MQTT topic | 목적 |
 | --- | --- | --- |
 | `sensor_snapshot` | `sf/gh1/sensors/snapshot` | 센서 완성형 스냅샷 이력 |
-| `sensor_latest` | 없음 | 센서 최신값 1행, UI 조회용 |
 | `weather` | `sf/gh1/sensors/weather` | 기상청 및 내부 온습도 결합 이력 |
 | `actuator_cmd` | `sf/gh1/actuators/cmd` | UI에서 발행한 제어 명령 |
 | `actuator_history` | `sf/gh1/actuators/state` | Arduino 적용 상태 이력 |
-| `actuator_latest` | 없음 | actuator 최신 상태 1행, UI 조회용 |
 | `heartbeat` | `sf/gh1/actuators/heartbeat` | Arduino 생존 신호 |
 | `fan_rpm` | `sf/gh1/actuators/fan-rpm` | 팬 RPM |
+| `ui_latest` | 없음 | UI 화면 구성에 필요한 모든 최신 정보 (greenhouse당 1행) |
 | `app_setting` | 없음 | UI/측정 주기 설정 |
 | `ads_reading` | raw ADS debug topics | ADS 디버깅 로그 |
 
@@ -203,39 +202,35 @@ CREATE TABLE IF NOT EXISTS fan_rpm (
 );
 ```
 
-## 10. 최신값 테이블
+## 10. `ui_latest`
 
-`sensor_latest`와 `actuator_latest`는 UI 조회 속도를 위해 greenhouse당 1행만 유지합니다.
+UI 화면 구성에 필요한 모든 최신 정보를 greenhouse당 1행으로 유지합니다. 그래프를 그리는 데 필요한 시계열 데이터는 포함하지 않으며, 그래프는 `sensor_snapshot`, `weather` 등 이력 테이블에서 과거 데이터를 검색해서 그립니다.
 
-```sql
-CREATE TABLE IF NOT EXISTS sensor_latest (
-    greenhouse      TEXT    PRIMARY KEY,
-    id              INTEGER,
-    ts              TEXT    NOT NULL,
-    source          TEXT,
-    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
-    temp_pot_c      REAL,
-    hum_pot_pct     REAL,
-    temp_top_c      REAL,
-    hum_top_pct     REAL,
-    co2_ppm         REAL,
-    par_w_m2        REAL,
-    soil_moisture_1_pct REAL,
-    soil_moisture_2_pct REAL,
-    soil_moisture_3_pct REAL,
-    soil_moisture_4_pct REAL,
-    soil_moisture_5_pct REAL,
-    soil_moisture_6_pct REAL
-);
-```
+logger는 관련 MQTT 메시지를 수신할 때마다 해당 컬럼만 `INSERT OR REPLACE`로 갱신합니다.
 
 ```sql
-CREATE TABLE IF NOT EXISTS actuator_latest (
+CREATE TABLE IF NOT EXISTS ui_latest (
     greenhouse      TEXT    PRIMARY KEY,
-    ts              TEXT    NOT NULL,
-    source          TEXT,
-    seq             INTEGER,
-    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
+    updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
+
+    -- 센서 최신값 (source: sensor_snapshot)
+    sensor_ts               TEXT,
+    temp_pot_c              REAL,
+    hum_pot_pct             REAL,
+    temp_top_c              REAL,
+    hum_top_pct             REAL,
+    co2_ppm                 REAL,
+    par_w_m2                REAL,
+    soil_moisture_1_pct     REAL,
+    soil_moisture_2_pct     REAL,
+    soil_moisture_3_pct     REAL,
+    soil_moisture_4_pct     REAL,
+    soil_moisture_5_pct     REAL,
+    soil_moisture_6_pct     REAL,
+
+    -- 액추에이터 최신 상태 (source: actuator_history)
+    actuator_ts             TEXT,
+    actuator_seq            INTEGER,
     vent_fan_pwm_pct        INTEGER,
     circ_fan_1_pwm_pct      INTEGER,
     circ_fan_2_pwm_pct      INTEGER,
@@ -256,7 +251,29 @@ CREATE TABLE IF NOT EXISTS actuator_latest (
     led_r                   INTEGER,
     led_g                   INTEGER,
     led_b                   INTEGER,
-    led_brightness_pct      INTEGER
+    led_brightness_pct      INTEGER,
+
+    -- 팬 RPM (source: fan_rpm)
+    fan_rpm_ts              TEXT,
+    vent_fan_rpm            INTEGER,
+    circ_fan_1_rpm          INTEGER,
+    circ_fan_2_rpm          INTEGER,
+
+    -- heartbeat (source: heartbeat)
+    heartbeat_ts            TEXT,
+    heartbeat_uptime_ms     INTEGER,
+
+    -- 날씨 최신값 (source: weather)
+    weather_ts              TEXT,
+    weather_fetched_at      TEXT,
+    internal_temp_c         REAL,
+    internal_hum_pct        REAL,
+    ta                      REAL,
+    hm                      REAL,
+    rn                      REAL,
+    ws                      REAL,
+    icsr                    REAL,
+    ss                      REAL
 );
 ```
 
@@ -330,11 +347,10 @@ CREATE INDEX IF NOT EXISTS idx_ads_reading_addr_channel_ts
 | 테이블 | 권장 보존 기간 | 비고 |
 | --- | --- | --- |
 | `sensor_snapshot` | 90일 이상 | 과거 추세용 |
-| `sensor_latest` | 항상 유지 | greenhouse당 1행 |
 | `weather` | 90일 이상 | 내부/외부 환경 비교 |
 | `actuator_cmd` | 30일 이상 | 디버깅/감사용 |
 | `actuator_history` | 30일 이상 | 디버깅/감사용 |
-| `actuator_latest` | 항상 유지 | greenhouse당 1행 |
+| `ui_latest` | 항상 유지 | greenhouse당 1행 |
 | `heartbeat` | 7일 이상 | online 판단용 |
 | `fan_rpm` | 30일 이상 | 모니터링용 |
 | `ads_reading` | 짧게 또는 선택 저장 | 디버깅용 |

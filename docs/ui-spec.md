@@ -6,7 +6,9 @@
 ## 1. 기본 방향
 
 - UI 이름: `SFES Lab`
-- **UI 프레임워크: Streamlit** (`rpi/ui/app_v2.py`)
+- **UI 구조: FastAPI backend + 정적 HTML/CSS/바닐라 JavaScript frontend**
+- 브라우저 기본 JavaScript를 사용하므로 Raspberry Pi에 Node.js를 설치하지 않아도 됩니다.
+- React/Vite는 현재 범위에서 사용하지 않고, UI가 커질 경우 향후 전환 후보로만 둡니다.
 - 대상 화면: Raspberry Pi 모니터 기준 `1280x800`
 - 대상 디스플레이: 10.1 inch IPS 1280×800, 정전식 터치
 - 실제 디스플레이 사이즈: 216.57mm × 135.36mm
@@ -36,10 +38,9 @@
 
 - 화면 어디서든 현재 날짜/시간 표시
 - 각 탭별로 마지막 업데이트 시간 1개 표시
-- 각 센서값마다 개별 업데이트 시간을 표시하지 않음
-- UI는 SQLite의 최신값/과거값을 읽어 표시
+- UI의 모니터링 탭은 SQLite의 `ui_latest` 테이블을 읽어 표시
+- UI의 그래프 탭은 SQLite의 과거값을 읽어 표시
 - 제어 입력은 MQTT command로 publish
-- 날씨 정보도 가능하면 logger를 통해 DB에 저장된 값을 표시
 - 기준 운영 대상은 `GH1` 1개이며, topic 구조는 `sf/gh1/...`를 유지
 
 ## 4. 모니터링 탭
@@ -48,21 +49,15 @@
 
 필수 요소:
 
-- 최신 `sensor_snapshot` 값 표시
+- 최신 `ui_latest` 테이블에서 센서값 및 날씨 정보 표시
 - Arduino heartbeat 상태 표시
 - Arduino 리셋 버튼
-- 날씨 정보 표시
 
-**참고**: 라즈베리 파이의 리소스 제약으로 인한 성능 저하(렉)를 방지하기 위해, 실시간 그래프는 모니터링 탭에서 제외되었습니다. 상세 추세는 '그래프' 탭에서 확인할 수 있습니다.
+현재 UI 구현 방향:
 
-현재 코드 구현 상태:
-
-- **`rpi/ui/app.py`**: 초기 프로토타입 (Python HTTP 서버 + 인라인 HTML)
-- **`rpi/ui/app_v2.py`**: Streamlit 기반 정식 UI (탭 4개 구현 완료)
-  - 모니터링: 센서값, 날씨, heartbeat, Arduino 리셋 (최적화를 위해 그래프 제거)
-  - 제어: PWM 슬라이더, ON/OFF 토글, 창문/스크린, LED RGB (실시간 즉시 전송)
-  - 그래프: 기간별 센서 추세 분석
-  - 설정: 업데이트 주기, heartbeat 타임아웃 등
+- FastAPI가 API와 정적 파일 서빙을 담당합니다.
+- HTML/CSS/바닐라 JavaScript가 kiosk 화면을 구성합니다.
+- JavaScript는 브라우저에서 실행되므로 Raspberry Pi에는 Python, FastAPI/uvicorn, Chromium만 있으면 됩니다.
 
 표시 대상 센서 항목:
 
@@ -88,9 +83,9 @@ Arduino 리셋:
 
 날씨 정보:
 
-- 인터넷 접속이 가능하면 외부 날씨 정보를 가져와 표시
-- 인터넷 접속 실패 또는 API 실패 시 UI를 멈추지 않음
-- 실패 시 날씨 값은 비워두고 나머지 센서/제어 화면은 정상 동작
+- ui_latest 테이블의 외부 날씨 정보를 가져와 표시
+- 현재 표시 중인 날씨 정보가 업데이트된 시간 정보를 함께 표시
+- ui_latest 에 날씨 정보가 없을 경우 공란으로 둠
 
 ## 5. 제어 탭
 
@@ -103,6 +98,8 @@ Arduino 리셋:
 - PWM 값은 숫자 입력으로도 조절 가능
 - window 제어는 `open`, `close`, `stop` 선택 방식 사용
 - LED 제어가 포함될 경우 RGB와 brightness 입력 제공
+- 사용자가 slider/toggle/radio를 변경하면 즉시 MQTT command를 publish합니다.
+- 별도 "적용" 버튼을 기다리지 않는 즉시 반응형 제어 UX를 기본 정책으로 합니다.
 
 제어 대상 예시:
 
@@ -121,7 +118,16 @@ Arduino 리셋:
 - 사용자가 제어값을 변경하면 MQTT command를 publish
 - 동시에 변경된 제어값을 DB에 저장
 - 저장 대상은 `actuator_cmd` 테이블
-- Arduino가 실제 적용 상태를 publish하면 `actuator_history` 테이블에 저장하고 `actuator_latest`를 갱신
+- Arduino가 실제 적용 상태를 publish하면 `actuator_history` 테이블에 저장하고 `ui_latest`를 갱신
+- 즉시 전송 정책을 사용하므로 프론트엔드는 중복 이벤트와 너무 잦은 slider 이벤트를 방지해야 합니다.
+- PWM slider는 필요 시 짧은 debounce 또는 change 이벤트 기준으로 전송합니다.
+
+창문 초기 보정:
+
+- 창문에는 별도 위치 센서가 없으므로 UI/backend 시작 시 기준점을 맞추는 보정 동작이 필요합니다.
+- 시작 보정은 창문을 닫힘 방향으로 약 5초간 구동한 뒤 `stop` 명령을 보내 완전히 닫힌 상태를 기준점으로 삼습니다.
+- 이 동작은 의도된 운영 정책이며, 이후 개도율 계산의 기준이 됩니다.
+- 보정 명령도 일반 actuator command와 같은 `sf/gh1/actuators/cmd` topic을 사용합니다.
 
 ## 6. 그래프 탭
 
@@ -129,31 +135,27 @@ Arduino 리셋:
 
 필수 요소:
 
-- 시작 시간과 종료 시간 또는 최근 N분/시간/일 선택
+- 시작 시간과 종료 시간으로 그래프 기간 설정
 - 선택 기간 동안의 `sensor_snapshot` 추세 그래프 표시
 - 온도, 습도, CO2, PAR, 토양수분을 선택해서 볼 수 있는 구조
 - 데이터가 없는 기간은 빈 그래프로 표시하고 UI는 멈추지 않음
 
 권장 그래프 그룹:
 
-- 온도 그래프: 내부 온도 + 외기온도
-- 습도 그래프: 내부 습도 + 외기습도
+- 하나의 그래프에 내부 온도, 외기 온도, 내부 습도, 외기 습도, 내부 이산화탄소를 동시에 표시(왼쪽 y축은 온도와 습도를 동일 스케일로 표시, 오른쪽 y축은 co2 농도(ppm)를 표시)
 - 토양수분 그래프
-- 필요 시 CO2/PAR 개별 그래프
+- PAR 개별 그래프
 
 ## 7. 설정 탭
 
 설정 탭은 UI와 측정 동작의 주기를 조정하는 화면입니다.
 
 설정 항목:
-
 - 화면 업데이트 주기
 - 센서 측정/publish 주기
 - heartbeat OFF 판단 기준 시간
-- 그래프 기본 조회 기간
 
 주의:
-
 - logger는 MQTT 수신 즉시 DB에 저장
 - 설정 탭의 주기는 DB 저장 주기가 아니라 sensor hub의 측정/publish 주기를 의미
 - 측정 주기 변경은 sensor hub 설정에 반영되어야 함
@@ -196,17 +198,17 @@ UI 자체는 위 프로세스들을 직접 subprocess로 실행하지 않습니�
 
 운영 시 Raspberry Pi 브라우저는 전체 화면 또는 kiosk 모드로 실행합니다.
 
-Streamlit 서버 실행:
+FastAPI UI 서버 실행:
 
 ```bash
 cd /home/pi/smartfarm/smartfarm
-streamlit run rpi/ui/app_v2.py --server.port 8501 --server.headless true
+uvicorn rpi.ui.server:app --host 127.0.0.1 --port 8000
 ```
 
 Kiosk 브라우저 실행:
 
 ```bash
-chromium-browser --kiosk http://127.0.0.1:8501
+chromium-browser --kiosk http://127.0.0.1:8000
 ```
 
 정확한 실행 명령은 Raspberry Pi OS와 설치된 브라우저에 맞춰 조정합니다.
@@ -220,7 +222,7 @@ chromium-browser --kiosk http://127.0.0.1:8501
 
 ## 12. 확인 필요
 
-- 기존 DB는 단일 `smartfarm.sqlite3`였지만, 새 요구사항은 월별 DB 파일 분리
 - 설정 탭의 저장 관련 주기는 실제로는 sensor hub 측정/publish 주기임
 - UI는 화면만 담당하고 프로세스 실행/재시작은 supervisor/systemd가 담당
 - supervisor와 systemd service 파일의 구체적인 분리는 구현 단계에서 설계 필요
+- 새 FastAPI 진입점 파일명과 정적 파일 배치 확정 필요

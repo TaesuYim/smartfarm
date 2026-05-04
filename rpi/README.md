@@ -63,6 +63,14 @@ MQTT 메시지를 받아 SQLite에 저장합니다.
 - actuator command publish
 - DB에 저장된 최신값/과거값 조회
 
+구현 방향:
+
+- FastAPI backend + 정적 HTML/CSS/바닐라 JavaScript frontend
+- JavaScript는 Chromium 브라우저에서 실행되므로 Raspberry Pi에 Node.js는 필요하지 않음
+- React/Vite는 현재 범위에서 사용하지 않고 향후 확장 후보로만 둠
+- slider/toggle/radio 변경 시 MQTT command를 즉시 publish
+- UI/backend 시작 시 창문을 닫힘 방향으로 약 5초간 구동한 뒤 `stop`하여 개도율 계산 기준점을 보정
+
 ### `weather_service`
 
 외부 날씨 정보를 가져와 MQTT로 publish합니다.
@@ -83,7 +91,7 @@ MQTT 메시지를 받아 SQLite에 저장합니다.
 
 ```bash
 python -m rpi.logger.mqtt_logger --db-dir data
-python -m rpi.ui.app --db-dir data --host 127.0.0.1 --port 8000
+uvicorn rpi.ui.server:app --host 127.0.0.1 --port 8000
 ```
 
 월별 DB 전환이 구현되면 UI와 logger 모두 같은 DB directory 설정을 사용해야 합니다.

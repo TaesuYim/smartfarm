@@ -17,6 +17,10 @@ paho-mqtt
 # HTTP / 날씨 API
 requests
 
+# Web UI (FastAPI + static vanilla JavaScript frontend)
+fastapi
+uvicorn[standard]
+
 # 데이터 저장 (SQLite는 stdlib에 포함, 추가 드라이버 없음)
 
 # 테스트

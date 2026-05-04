@@ -61,11 +61,12 @@ smartfarm/
 역할:
 
 - 1280x800 기준 탭 UI 제공
-- **UI 프레임워크: Streamlit** (`app_v2.py`)
+- **UI 구조: FastAPI backend + 정적 HTML/CSS/바닐라 JavaScript frontend**
 - 브라우저 전체 화면/kiosk 모드에서 사용
 - `app.py`: 초기 프로토타입 (Python HTTP 서버 + 인라인 HTML)
-- `app_v2.py`: Streamlit 기반 정식 UI (탭 4개: 모니터링, 제어, 그래프, 설정)
-- `.streamlit/config.toml`: Streamlit 테마 및 서버 설정
+- `app_v2.py`: Streamlit 기반 실험/이전 구현
+- `server.py`: FastAPI UI server 진입점 (예정)
+- `static/`: HTML/CSS/바닐라 JavaScript 정적 파일 위치 (예정)
 - 화면 표시와 사용자 입력 처리 담당
 - Python 서비스 실행은 UI가 직접 하지 않고 supervisor/systemd가 담당
 
@@ -163,7 +164,7 @@ Raspberry Pi boot
 초기 구현 단계:
 
 ```text
-python -m rpi.ui.app
+uvicorn rpi.ui.server:app --host 127.0.0.1 --port 8000
 python -m rpi.logger.mqtt_logger
 sensor_hub script
 weather_service script
@@ -185,6 +186,10 @@ weather_service script
 - `platformio.ini`
 - `systemd/` 서비스 파일
 - `scripts/` 배포/실행 스크립트
+- `rpi/ui/server.py`
+- `rpi/ui/static/index.html`
+- `rpi/ui/static/app.js`
+- `rpi/ui/static/styles.css`
 
 ## 8. 확인 필요
 

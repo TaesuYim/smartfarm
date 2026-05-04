@@ -105,9 +105,8 @@ def _q(sql, params=(), one=False):
 
 @st.cache_data(ttl=1)
 def get_latest_cached(gh="gh1"):
-    s = _q("SELECT * FROM sensor_latest WHERE greenhouse=?", (gh,), one=True)
-    a = _q("SELECT * FROM actuator_latest WHERE greenhouse=?", (gh,), one=True)
-    return s, a
+    row = _q("SELECT * FROM ui_latest WHERE greenhouse=?", (gh,), one=True)
+    return row or {}
 
 @st.cache_data(ttl=1)
 def get_heartbeat_cached(gh="gh1"):
@@ -248,22 +247,22 @@ active = st.session_state.active_tab
 # ----- Monitoring Tab (Fragmented) -----
 @st.fragment(run_every=ref_sec)
 def monitoring_tab_fragment():
-    sd, _ = get_latest_cached()
+    ui = get_latest_cached()
     st.markdown("##### 🌡️ 환경 센서")
     c1 = st.columns(6)
     for i, k in enumerate(["temp_pot_c","hum_pot_pct","temp_top_c","hum_top_pct","co2_ppm","par_w_m2"]):
-        lbl,unit,ico = SENSOR_META[k]; v = sd.get(k) if sd else None
+        lbl,unit,ico = SENSOR_META[k]; v = ui.get(k) if ui else None
         with c1[i]: st.metric(f"{ico} {lbl}", f"{v:.1f} {unit}" if v is not None else "—")
     st.markdown("##### 🌱 토양수분")
     c2 = st.columns(6)
     for i in range(6):
-        k = f"soil_moisture_{i+1}_pct"; lbl,unit,ico = SENSOR_META[k]; v = sd.get(k) if sd else None
+        k = f"soil_moisture_{i+1}_pct"; lbl,unit,ico = SENSOR_META[k]; v = ui.get(k) if ui else None
         with c2[i]: st.metric(f"{ico} {lbl}", f"{v:.1f}{unit}" if v is not None else "—")
     l, c, r = st.columns([1.5, 1.2, 1.3])
     with l:
-        st.markdown("##### 🌤️ 날씨")
-        w = get_weather_cached()
-        if w: 
+        w_ts = ui.get("weather_ts") if ui else None
+        if w_ts:
+            w = ui
             st.markdown(f'''
             <div class="weather-box" style="font-size: 1.05rem; line-height: 1.6;">
                 <b>🌡️ 외기온</b> {w.get("ta","—")}°C &nbsp; <b>💧 외습도</b> {w.get("hm","—")}% &nbsp; <b>☔ 강수</b> {w.get("rn","—")}mm<br>
@@ -273,12 +272,14 @@ def monitoring_tab_fragment():
         else: st.info("데이터 대기 중...")
     with c:
         st.markdown("##### 📡 통신 상태")
-        hb = get_heartbeat_cached(); timeout = int(settings.get("heartbeat_timeout_sec", 10)); now = datetime.now(KST)
+        hb_ts = ui.get("heartbeat_ts") if ui else None
+        timeout = int(settings.get("heartbeat_timeout_sec", 10)); now = datetime.now(KST)
         for name, src in [("Node1", "arduino_node_1"), ("Node2", "arduino_node_2")]:
             on = False
-            if src in hb:
+            if hb_ts:
                 try:
-                    last = datetime.fromisoformat(hb[src]["ts"]).replace(tzinfo=KST)
+                    last = datetime.fromisoformat(hb_ts)
+                    if last.tzinfo is None: last = last.replace(tzinfo=KST)
                     on = (now - last).total_seconds() < timeout
                 except: pass
             col = "#10b981" if on else "#ef4444"
@@ -306,15 +307,14 @@ def monitoring_tab_fragment():
         elif "t_arduino_pwr" in st.session_state:
             st.toast(f"🔌 전원 {'ON' if st.session_state.t_arduino_pwr else 'OFF'}")
             del st.session_state["t_arduino_pwr"]
-    st.caption(f"마지막 업데이트: {sd.get('ts','—') if sd else '—'}")
+    st.caption(f"마지막 업데이트: {ui.get('sensor_ts','—') if ui else '—'}")
 
 # ----- Render Tabs -----
 if active == "📊 모니터링":
     monitoring_tab_fragment()
 
 elif active == "🎛️ 제어":
-    _, act = get_latest_cached()
-    if not act: act = {}
+    act = get_latest_cached()
     cL, cR = st.columns(2)
     with cL:
         st.markdown("##### 🌬️ 환기 · 난방")

@@ -85,6 +85,8 @@ ADS1115 값을 변환한 완성형 센서 payload입니다.
 
 UI가 Arduino control node로 보내는 제어 명령입니다. 모든 key가 항상 포함될 필요는 없고, 변경된 항목만 포함할 수 있습니다.
 
+제어 UI는 slider/toggle/radio 변경 시 별도 적용 버튼 없이 즉시 command를 publish합니다. 프론트엔드는 중복 이벤트와 과도한 slider publish를 피하기 위해 필요 시 짧은 debounce 또는 release/change 이벤트 기준 전송을 사용합니다.
+
 ```json
 {
   "ts": "2026-04-30T10:00:00+09:00",
@@ -111,6 +113,30 @@ UI가 Arduino control node로 보내는 제어 명령입니다. 모든 key가 �
   "led_g": 255,
   "led_b": 255,
   "led_brightness_pct": 80
+}
+```
+
+창문 startup calibration 예시:
+
+창문에는 위치 센서가 없으므로 UI/backend 시작 시 닫힘 방향으로 약 5초간 구동한 뒤 `stop`하여 완전히 닫힌 기준점을 맞춥니다.
+
+```json
+{
+  "ts": "2026-05-05T08:00:00+09:00",
+  "source": "sfes_lab_ui_startup",
+  "window_1_cmd": "close",
+  "window_2_cmd": "close"
+}
+```
+
+약 5초 뒤:
+
+```json
+{
+  "ts": "2026-05-05T08:00:05+09:00",
+  "source": "sfes_lab_ui_startup",
+  "window_1_cmd": "stop",
+  "window_2_cmd": "stop"
 }
 ```
 

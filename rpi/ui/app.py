@@ -45,13 +45,13 @@ def fetch_latest_sensor_snapshot(db_path, greenhouse):
     with closing(sqlite3.connect(db_file)) as conn:
         conn.row_factory = sqlite3.Row
         return conn.execute(
-            "SELECT * FROM sensor_latest WHERE greenhouse = ?",
+            "SELECT * FROM ui_latest WHERE greenhouse = ?",
             (greenhouse,),
         ).fetchone()
 
 
-def build_sensor_payload(sensor_row):
-    snapshot = dict(sensor_row) if sensor_row else None
+def build_sensor_payload(ui_row):
+    snapshot = dict(ui_row) if ui_row else None
     sensors = []
     for column in SENSOR_VALUE_COLUMNS:
         label, unit = SENSOR_LABELS.get(column, (column, ""))
@@ -60,31 +60,25 @@ def build_sensor_payload(sensor_row):
     return {
         "snapshot": snapshot,
         "sensors": sensors,
-        "sensor_ts": snapshot["ts"] if snapshot else None,
+        "sensor_ts": snapshot["sensor_ts"] if snapshot else None,
     }
 
 def fetch_latest_data(db_path, greenhouse):
     db_file = Path(db_path)
     if not db_file.exists():
-        return None, None
+        return None
 
     try:
         with closing(sqlite3.connect(db_file)) as conn:
             conn.row_factory = sqlite3.Row
-            # Sensor data
-            sensor_row = conn.execute(
-                "SELECT * FROM sensor_latest WHERE greenhouse = ?", (greenhouse,)
-            ).fetchone()
-            
-            # Actuator state
-            actuator_row = conn.execute(
-                "SELECT * FROM actuator_latest WHERE greenhouse = ?", (greenhouse,)
+            row = conn.execute(
+                "SELECT * FROM ui_latest WHERE greenhouse = ?", (greenhouse,)
             ).fetchone()
 
-        return (dict(sensor_row) if sensor_row else None), (dict(actuator_row) if actuator_row else None)
+        return dict(row) if row else None
     except Exception as e:
         print(f"DB Fetch Error: {e}")
-        return None, None
+        return None
 
 _mqtt_client = None
 
@@ -137,12 +131,12 @@ class SmartFarmRequestHandler(BaseHTTPRequestHandler):
                 json_response(self, HTTPStatus.BAD_REQUEST, {"error": "unsupported greenhouse"})
                 return
             try:
-                sensor_row, actuator_row = fetch_latest_data(self.current_db_path(), greenhouse)
-                sensor_payload = build_sensor_payload(sensor_row)
+                ui_row = fetch_latest_data(self.current_db_path(), greenhouse)
+                sensor_payload = build_sensor_payload(ui_row)
 
                 payload = {
                     **sensor_payload,
-                    "actuators": actuator_row if actuator_row else None
+                    "actuators": ui_row if ui_row else None
                 }
                 
                 json_response(self, HTTPStatus.OK, payload)

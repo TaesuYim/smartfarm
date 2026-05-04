@@ -60,33 +60,17 @@ WEATHER_VALUE_COLUMNS = (
 )
 
 
+FAN_RPM_COLUMNS = (
+    "vent_fan_rpm",
+    "circ_fan_1_rpm",
+    "circ_fan_2_rpm",
+)
+
+
 CREATE_SENSOR_SNAPSHOT_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS sensor_snapshot (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     greenhouse      TEXT    NOT NULL,
-    ts              TEXT    NOT NULL,
-    source          TEXT,
-    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
-
-    temp_pot_c              REAL,
-    hum_pot_pct             REAL,
-    temp_top_c              REAL,
-    hum_top_pct             REAL,
-    co2_ppm                 REAL,
-    par_w_m2                REAL,
-    soil_moisture_1_pct     REAL,
-    soil_moisture_2_pct     REAL,
-    soil_moisture_3_pct     REAL,
-    soil_moisture_4_pct     REAL,
-    soil_moisture_5_pct     REAL,
-    soil_moisture_6_pct     REAL
-);
-"""
-
-CREATE_SENSOR_LATEST_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS sensor_latest (
-    greenhouse      TEXT    PRIMARY KEY,
-    id              INTEGER,
     ts              TEXT    NOT NULL,
     source          TEXT,
     received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
@@ -173,14 +157,29 @@ CREATE TABLE IF NOT EXISTS actuator_history (
 );
 """
 
-CREATE_ACTUATOR_LATEST_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS actuator_latest (
+CREATE_UI_LATEST_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS ui_latest (
     greenhouse      TEXT    PRIMARY KEY,
-    ts              TEXT    NOT NULL,
-    source          TEXT,
-    seq             INTEGER,
-    received_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
+    updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f+09:00', 'now', '+9 hours')),
 
+    -- sensor (source: sensor_snapshot)
+    sensor_ts               TEXT,
+    temp_pot_c              REAL,
+    hum_pot_pct             REAL,
+    temp_top_c              REAL,
+    hum_top_pct             REAL,
+    co2_ppm                 REAL,
+    par_w_m2                REAL,
+    soil_moisture_1_pct     REAL,
+    soil_moisture_2_pct     REAL,
+    soil_moisture_3_pct     REAL,
+    soil_moisture_4_pct     REAL,
+    soil_moisture_5_pct     REAL,
+    soil_moisture_6_pct     REAL,
+
+    -- actuator (source: actuator_history)
+    actuator_ts             TEXT,
+    actuator_seq            INTEGER,
     vent_fan_pwm_pct        INTEGER,
     circ_fan_1_pwm_pct      INTEGER,
     circ_fan_2_pwm_pct      INTEGER,
@@ -201,7 +200,29 @@ CREATE TABLE IF NOT EXISTS actuator_latest (
     led_r                   INTEGER,
     led_g                   INTEGER,
     led_b                   INTEGER,
-    led_brightness_pct      INTEGER
+    led_brightness_pct      INTEGER,
+
+    -- fan rpm (source: fan_rpm)
+    fan_rpm_ts              TEXT,
+    vent_fan_rpm            INTEGER,
+    circ_fan_1_rpm          INTEGER,
+    circ_fan_2_rpm          INTEGER,
+
+    -- heartbeat (source: heartbeat)
+    heartbeat_ts            TEXT,
+    heartbeat_uptime_ms     INTEGER,
+
+    -- weather (source: weather)
+    weather_ts              TEXT,
+    weather_fetched_at      TEXT,
+    internal_temp_c         REAL,
+    internal_hum_pct        REAL,
+    ta                      REAL,
+    hm                      REAL,
+    rn                      REAL,
+    ws                      REAL,
+    icsr                    REAL,
+    ss                      REAL
 );
 """
 
@@ -293,11 +314,10 @@ def connect_db(db_path):
 
 def init_db(conn):
     conn.execute(CREATE_SENSOR_SNAPSHOT_TABLE_SQL)
-    conn.execute(CREATE_SENSOR_LATEST_TABLE_SQL)
     conn.execute(CREATE_WEATHER_TABLE_SQL)
     conn.execute(CREATE_ACTUATOR_CMD_TABLE_SQL)
     conn.execute(CREATE_ACTUATOR_HISTORY_TABLE_SQL)
-    conn.execute(CREATE_ACTUATOR_LATEST_TABLE_SQL)
+    conn.execute(CREATE_UI_LATEST_TABLE_SQL)
     conn.execute(CREATE_HEARTBEAT_TABLE_SQL)
     conn.execute(CREATE_FAN_RPM_TABLE_SQL)
     conn.execute(CREATE_APP_SETTING_TABLE_SQL)
@@ -322,25 +342,36 @@ def _json_or_text(value):
     return value
 
 
+def _upsert_ui_latest(conn, greenhouse, fields):
+    """Update only the given fields in ui_latest for the greenhouse.
+
+    Uses INSERT OR IGNORE to ensure the row exists, then UPDATE to set
+    only the provided columns. This avoids overwriting columns managed
+    by other data sources.
+    """
+    conn.execute(
+        "INSERT OR IGNORE INTO ui_latest (greenhouse) VALUES (?)",
+        (greenhouse,),
+    )
+    set_clause = ", ".join(f"{k} = ?" for k in fields)
+    conn.execute(
+        f"UPDATE ui_latest SET {set_clause}, updated_at = ? WHERE greenhouse = ?",
+        [*fields.values(), now_kst_iso(), greenhouse],
+    )
+
+
 def insert_sensor_snapshot(conn, greenhouse, payload):
     ts = _normalize_ts(payload.get("ts")) or now_kst_iso()
     columns = ("greenhouse", "ts", "source", *SENSOR_VALUE_COLUMNS)
     values = [greenhouse, ts, payload.get("source")]
     values.extend(payload.get(column) for column in SENSOR_VALUE_COLUMNS)
 
-    cursor = _insert_row(conn, "sensor_snapshot", columns, values)
-    last_id = cursor.lastrowid
+    _insert_row(conn, "sensor_snapshot", columns, values)
 
-    columns_latest = ("id", "greenhouse", "ts", "source", *SENSOR_VALUE_COLUMNS)
-    values_latest = [last_id, greenhouse, ts, payload.get("source")]
-    values_latest.extend(payload.get(column) for column in SENSOR_VALUE_COLUMNS)
-    placeholders_latest = ", ".join("?" for _ in columns_latest)
-    column_names_latest = ", ".join(columns_latest)
-
-    conn.execute(
-        f"REPLACE INTO sensor_latest ({column_names_latest}) VALUES ({placeholders_latest})",
-        values_latest,
-    )
+    # Update ui_latest sensor columns
+    ui_fields = {"sensor_ts": ts}
+    ui_fields.update({col: payload.get(col) for col in SENSOR_VALUE_COLUMNS})
+    _upsert_ui_latest(conn, greenhouse, ui_fields)
     conn.commit()
 
 
@@ -372,6 +403,14 @@ def insert_weather(conn, greenhouse, payload):
         ]
     )
     _insert_row(conn, "weather", columns, values)
+
+    # Update ui_latest weather columns
+    ui_fields = {
+        "weather_ts": ts,
+        "weather_fetched_at": fetched_at,
+    }
+    ui_fields.update({col: payload.get(col) for col in WEATHER_VALUE_COLUMNS})
+    _upsert_ui_latest(conn, greenhouse, ui_fields)
     conn.commit()
 
 
@@ -396,49 +435,43 @@ def insert_actuator_state(conn, greenhouse, payload):
         conn.commit()
         return
 
-    fields = {
-        "ts": ts,
-        "source": payload.get("source"),
-        "seq": payload.get("seq"),
-    }
-    fields.update({column: applied.get(column) for column in ACTUATOR_VALUE_COLUMNS})
-
+    # Build ui_latest actuator fields, merging with existing values
     existing = conn.execute(
-        "SELECT * FROM actuator_latest WHERE greenhouse = ?",
+        "SELECT * FROM ui_latest WHERE greenhouse = ?",
         (greenhouse,),
     ).fetchone()
 
-    if existing:
-        new_data = dict(existing)
-        for key, value in fields.items():
-            if value is not None:
-                new_data[key] = value
-    else:
-        new_data = {"greenhouse": greenhouse}
-        new_data.update(fields)
+    ui_fields = {
+        "actuator_ts": ts,
+        "actuator_seq": payload.get("seq"),
+    }
+    for col in ACTUATOR_VALUE_COLUMNS:
+        new_val = applied.get(col)
+        if new_val is not None:
+            ui_fields[col] = new_val
+        elif existing and existing[col] is not None:
+            ui_fields[col] = existing[col]
 
-    cols = ", ".join(new_data.keys())
-    placeholders = ", ".join("?" for _ in new_data)
-    conn.execute(
-        f"REPLACE INTO actuator_latest ({cols}) VALUES ({placeholders})",
-        list(new_data.values()),
-    )
+    _upsert_ui_latest(conn, greenhouse, ui_fields)
     conn.commit()
 
 
 def insert_heartbeat(conn, greenhouse, payload):
+    ts = _normalize_ts(payload.get("ts")) or now_kst_iso()
     columns = ("greenhouse", "ts", "source", "uptime_ms")
-    values = [
-        greenhouse,
-        _normalize_ts(payload.get("ts")) or now_kst_iso(),
-        payload.get("source"),
-        payload.get("uptime_ms"),
-    ]
+    values = [greenhouse, ts, payload.get("source"), payload.get("uptime_ms")]
     _insert_row(conn, "heartbeat", columns, values)
+
+    # Update ui_latest heartbeat columns
+    _upsert_ui_latest(conn, greenhouse, {
+        "heartbeat_ts": ts,
+        "heartbeat_uptime_ms": payload.get("uptime_ms"),
+    })
     conn.commit()
 
 
 def insert_fan_rpm(conn, greenhouse, payload):
+    ts = _normalize_ts(payload.get("ts")) or now_kst_iso()
     columns = (
         "greenhouse",
         "ts",
@@ -449,13 +482,18 @@ def insert_fan_rpm(conn, greenhouse, payload):
     )
     values = [
         greenhouse,
-        _normalize_ts(payload.get("ts")) or now_kst_iso(),
+        ts,
         payload.get("source"),
         payload.get("vent_fan_rpm"),
         payload.get("circ_fan_1_rpm"),
         payload.get("circ_fan_2_rpm"),
     ]
     _insert_row(conn, "fan_rpm", columns, values)
+
+    # Update ui_latest fan rpm columns
+    ui_fields = {"fan_rpm_ts": ts}
+    ui_fields.update({col: payload.get(col) for col in FAN_RPM_COLUMNS})
+    _upsert_ui_latest(conn, greenhouse, ui_fields)
     conn.commit()
 
 

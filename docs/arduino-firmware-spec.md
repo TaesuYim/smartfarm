@@ -59,6 +59,8 @@ ON/OFF 제어:
 - 창문 1
 - 창문 2
 - 명령: `open`, `close`, `stop`
+- 개도율 계산을 위해 UI/backend 시작 시 닫힘 방향으로 약 5초간 구동한 뒤 `stop`하는 초기 보정 명령을 받을 수 있습니다.
+- 이 초기 보정은 창문 위치 센서가 없는 현재 하드웨어에서 완전히 닫힌 상태를 기준점으로 삼기 위한 의도된 동작입니다.
 
 ### Node 2 담당
 
@@ -141,6 +143,7 @@ UI는 마지막 heartbeat 수신 시각을 기준으로 LED 상태를 표시합�
 
 - MQTT 연결 끊김 시 actuator 상태 유지 정책
 - window 개도율 계산 방식
+- startup window close calibration 시간과 방향 검증
 - fan RPM 입력 핀 배치 및 회로 (추후 구현 시 `docs/pin-map.md`에 추가)
 - fan RPM publish 주기
 - relay reset helper의 실제 회로와 GPIO 핀
