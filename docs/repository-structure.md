@@ -60,7 +60,7 @@ smartfarm/
 
 역할:
 
-- 1024x600 기준 탭 UI 제공
+- 1280x800 기준 탭 UI 제공
 - 브라우저 전체 화면/kiosk 모드에서 사용
 - 현재 구현: 최신 센서값과 actuator 제어/상태 화면
 - 목표: heartbeat, weather, graph, settings 화면까지 확장

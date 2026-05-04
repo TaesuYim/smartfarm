@@ -2,7 +2,7 @@
 
 Shows the SmartFarm dashboard for `GH1`. `GH2` is a future expansion target.
 
-The target display is `1024x600`, but the UI should stay usable on other browser sizes. The final UI is tab-based:
+The target display is `1280x800` (10.1" IPS, capacitive touch), but the UI should stay usable on other browser sizes. The final UI is tab-based:
 
 - Monitoring
 - Control
