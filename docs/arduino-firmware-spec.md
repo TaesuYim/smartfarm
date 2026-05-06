@@ -11,7 +11,7 @@
   - **Node 1** (`control_node_1`): 환기팬, 히터, 순환팬, 펌프, 미스트, 창문 제어
   - **Node 2** (`control_node_2`): 솔레노이드 밸브, LED, 차광스크린(스텝모터) 제어
 - Raspberry Pi는 UI, logger, sensor hub, weather service, supervisor/systemd를 담당합니다.
-- Arduino 재부팅은 MQTT topic이 아니라 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
+- Arduino 재부팅은 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
 
 ## 2. MQTT 연결
 
@@ -122,7 +122,7 @@ UI는 마지막 heartbeat 수신 시각을 기준으로 LED 상태를 표시합�
 
 운영 UI에는 Arduino reset 버튼이 있습니다.
 
-단, reset은 Arduino firmware가 자기 자신에게 MQTT 명령을 받아 수행하는 방식이 아니라 Raspberry Pi GPIO + 릴레이 helper가 수행합니다.
+단, reset은 Raspberry Pi GPIO + 릴레이 helper가 수행합니다.
 
 권장 동작:
 

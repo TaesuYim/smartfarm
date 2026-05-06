@@ -33,7 +33,7 @@ smartfarm_2026_06.sqlite3
 - timestamp는 ISO 8601 문자열을 사용합니다.
 - JSON key와 DB column은 `lower_snake_case`를 사용합니다.
 - logger는 MQTT 메시지를 수신하는 즉시 저장합니다.
-- `measurement_interval_sec`는 DB 저장 주기가 아니라 sensor hub 측정/publish 주기입니다.
+- `measurement_interval_sec`는 sensor hub 측정/publish 주기입니다.
 
 ## 3. 테이블 목록
 

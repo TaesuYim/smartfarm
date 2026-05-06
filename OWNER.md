@@ -27,14 +27,14 @@
 
 ## 3. 현재 합의된 중요한 결정
 - 에이전트 규칙은 `.agents/rules/`에 분리하고 상세는 `docs/`로 분리
-- 실시간 UI는 가능하면 MQTT 직접 구독보다 DB의 최신값을 읽어 표시
+- 실시간 UI는 DB의 최신값을 읽어 표시
 - UI는 FastAPI + 정적 HTML/CSS/바닐라 JavaScript로 구현
 - 제어 UI는 slider/toggle/radio 변경 시 MQTT command를 즉시 publish
 - Arduino는 다음을 publish
   - actuator state
   - heartbeat
   - fan RPM
-- Arduino 재부팅은 MQTT가 아니라 Raspberry Pi GPIO + 릴레이로 수행
+- Arduino 재부팅은 Raspberry Pi GPIO + 릴레이로 수행
 - UI는 각 탭별로 마지막 업데이트 시간 1개만 표시
 - 기상청 데이터는 매시 1분에 정시 데이터를 요청하고, 받아온 시각도 DB에 저장
 - 창문은 위치 센서가 없으므로 UI/backend 시작 시 닫힘 방향 5초 구동 후 `stop`하여 완전 닫힘 기준점을 보정

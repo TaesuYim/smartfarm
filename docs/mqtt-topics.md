@@ -10,7 +10,7 @@
 - payload는 JSON을 기본으로 합니다.
 - timestamp는 ISO 8601 문자열을 사용합니다.
 - logger는 MQTT 수신 즉시 월별 SQLite DB에 저장합니다.
-- 설정 탭의 측정 주기는 DB 저장 주기가 아니라 sensor hub publish 주기를 의미합니다.
+- 설정 탭의 측정 주기는 sensor hub의 측정/publish 주기입니다.
 
 ## 2. Topic 목록
 
@@ -205,7 +205,7 @@ Arduino online/offline 판단용 신호입니다.
 
 ## 9. Arduino reset
 
-Arduino 재부팅은 현재 MQTT topic이 아니라 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
+Arduino 재부팅은 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
 
 운영 UI에서는 reset 버튼을 제공하지만, 실제 GPIO 제어는 UI 프로세스가 직접 하지 않고 별도 helper 또는 system service가 담당합니다.
 
