@@ -43,11 +43,10 @@ def _start_background_services():
         with open(log_file, "a") as f:
             subprocess.Popen([sys.executable, "-m", "rpi.logger.mqtt_logger"], cwd=project_root, stdout=f, stderr=f, start_new_session=True)
 
-    if not _is_running("test_sensor_snapshot_publish"):
+    if not _is_running("rpi.sensor_hub.main"):
         sensor_log = Path(project_root) / "sensor_pub.log"
         with open(sensor_log, "a") as f:
-            cmd = [sys.executable, "-m", "rpi.tests.integration.test_sensor_snapshot_publish"]
-            if os.name == 'nt': cmd.append("--dummy")
+            cmd = [sys.executable, "-m", "rpi.sensor_hub.main"]
             subprocess.Popen(cmd, cwd=project_root, stdout=f, stderr=f, start_new_session=True)
             
     if not _is_running("rpi.services.weather_service"):

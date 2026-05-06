@@ -6,10 +6,8 @@ ADS1115 센서 4개에서 채널을 읽고,
 sf/gh1/sensors/snapshot MQTT 토픽에 발행합니다.
 
 실행:
-    ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py
-    ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py --gh gh1
-    ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py --rate 0.5
-    ./rpi/.venv/bin/python rpi/tests/integration/test_sensor_snapshot_publish.py --dummy
+    ./rpi/.venv/bin/python rpi/sensor_hub/main.py --gh gh1
+    ./rpi/.venv/bin/python rpi/sensor_hub/main.py --rate 0.5
 """
 
 import argparse
@@ -75,22 +73,6 @@ def init_i2c():
         return None
 
 
-def get_dummy_snapshot():
-    """임시 작업을 위한 더미 데이터 생성"""
-    return {
-        "temp_pot_c": round(random.uniform(22.0, 24.0), 2),
-        "hum_pot_pct": round(random.uniform(45.0, 55.0), 2),
-        "temp_top_c": round(random.uniform(24.0, 26.0), 2),
-        "hum_top_pct": round(random.uniform(40.0, 50.0), 2),
-        "co2_ppm": round(random.uniform(500.0, 600.0), 1),
-        "par_w_m2": round(random.uniform(0.5, 0.8), 4),
-        "soil_moisture_1_pct": round(random.uniform(35.0, 40.0), 4),
-        "soil_moisture_2_pct": round(random.uniform(35.0, 40.0), 4),
-        "soil_moisture_3_pct": round(random.uniform(35.0, 40.0), 4),
-        "soil_moisture_4_pct": round(random.uniform(35.0, 40.0), 4),
-        "soil_moisture_5_pct": round(random.uniform(35.0, 40.0), 4),
-        "soil_moisture_6_pct": round(random.uniform(35.0, 40.0), 4),
-    }
 
 
 def try_init_ads(i2c, address):
@@ -133,7 +115,7 @@ def read_snapshot(ch_4b, ch_49, ch_48):
             _ = channels[idx].voltage
             time.sleep(0.01)
 
-            # 5번 읽어서 중간값(median)을 취함 (튀는 값 방지 성능 강화)
+            # 5번 읽어서 중간값(median)을 취함
             samples = []
             for _ in range(5):
                 v = channels[idx].voltage
@@ -142,25 +124,14 @@ def read_snapshot(ch_4b, ch_49, ch_48):
                 time.sleep(0.005)
 
             if not samples:
-                return LAST_GOOD_VALUES.get(key)
+                return None
                 
             median_v = statistics.median(samples)
             current_val = convert_fn(median_v)
-
-            # 델타 필터: 이전 값과 너무 차이가 크면 노이즈로 간주
-            if key in LAST_GOOD_VALUES:
-                last_val = LAST_GOOD_VALUES[key]
-                if abs(current_val - last_val) > threshold:
-                    OUTLIER_COUNT[key] = OUTLIER_COUNT.get(key, 0) + 1
-                    # 3회 연속으로 튀는 경우에만 실제 변화로 인정
-                    if OUTLIER_COUNT[key] < 3:
-                        return last_val
             
-            LAST_GOOD_VALUES[key] = current_val
-            OUTLIER_COUNT[key] = 0
             return current_val
         except Exception:
-            return LAST_GOOD_VALUES.get(key)
+            return None
 
     return {
         "temp_pot_c":          safe_read(ch_4b, 0, voltage_to_temp_c, "temp_pot", 5.0)       if ch_4b else None,
@@ -184,7 +155,6 @@ def main():
     parser.add_argument("--host", default="127.0.0.1", help="MQTT 브로커 호스트")
     parser.add_argument("--port", default=1883, type=int, help="MQTT 브로커 포트")
     parser.add_argument("--rate", default=1.0, type=float, help="초당 발행 횟수 (기본: 1)")
-    parser.add_argument("--dummy", action="store_true", help="더미 데이터 사용 모드")
     args = parser.parse_args()
 
     topic = f"sf/{args.gh}/sensors/snapshot"
@@ -194,8 +164,6 @@ def main():
     print(f"  온실: {args.gh}")
     print(f"  MQTT 토픽: {topic}")
     print(f"  발행 주기: {period:.1f}s")
-    if args.dummy or not HAS_HARDWARE:
-        print("  모드: 더미 데이터 (Hardware Not Found or Dummy Flag)")
     print()
 
     # MQTT 연결
@@ -213,13 +181,15 @@ def main():
     ads_49, ch_49 = None, []
     ads_48, ch_48 = None, []
 
-    if not args.dummy and HAS_HARDWARE:
+    if HAS_HARDWARE:
         print("ADS1115 초기화 중...")
         i2c = init_i2c()
         if i2c:
             ads_4b, ch_4b = try_init_ads(i2c, 0x4b)
             ads_49, ch_49 = try_init_ads(i2c, 0x49)
             ads_48, ch_48 = try_init_ads(i2c, 0x48)
+    else:
+        print("하드웨어를 찾을 수 없습니다. (ADS1115 라이브러리 미설치 또는 환경 차이)")
     print()
 
     print("발행 시작... (Ctrl+C로 종료)")
@@ -228,18 +198,15 @@ def main():
             loop_start = time.time()
             ts = now_kst()
             
-            if args.dummy or not HAS_HARDWARE:
-                sensor_values = get_dummy_snapshot()
-            else:
-                sensor_values = read_snapshot(
-                    ch_4b if ads_4b else None,
-                    ch_49 if ads_49 else None,
-                    ch_48 if ads_48 else None,
-                )
+            sensor_values = read_snapshot(
+                ch_4b if ads_4b else None,
+                ch_49 if ads_49 else None,
+                ch_48 if ads_48 else None,
+            )
 
             payload = {
                 "ts": ts,
-                "source": "rpi5_main" if HAS_HARDWARE else "pc_dummy",
+                "source": "rpi5_main",
                 **sensor_values,
             }
 

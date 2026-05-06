@@ -53,7 +53,6 @@ def start_background_services():
         sensor_log = Path(project_root) / "sensor_pub.log"
         try:
             cmd = [sys.executable, "-m", "rpi.sensor_hub.main"]
-            if os.name == 'nt': cmd.append("--dummy")
             with open(sensor_log, "a") as f:
                 subprocess.Popen(cmd, cwd=project_root, stdout=f, stderr=f, start_new_session=True)
             print("  Sensor Hub started.")
@@ -158,9 +157,6 @@ def send_command(payload: CommandPayload):
 
 @app.post("/api/arduino/reset")
 def reset_arduino():
-    if os.name == 'nt':
-        return {"status": "success", "msg": "dummy reset on windows"}
-        
     try:
         from gpiozero import OutputDevice
         import time
