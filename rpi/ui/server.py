@@ -31,30 +31,65 @@ def _is_running(pattern):
     except: return False
 
 def start_background_services():
+    print("--- Starting Background Services ---")
+    
+    # 1. MQTT Logger
     if not _is_running("rpi.logger.mqtt_logger"):
+        print("  Starting MQTT Logger...")
         log_file = Path(project_root) / "mqtt_logger.log"
-        with open(log_file, "a") as f:
-            subprocess.Popen([sys.executable, "-m", "rpi.logger.mqtt_logger"], cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+        try:
+            with open(log_file, "a") as f:
+                subprocess.Popen([sys.executable, "-m", "rpi.logger.mqtt_logger"], 
+                                 cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+            print("  MQTT Logger started.")
+        except Exception as e:
+            print(f"  Failed to start MQTT Logger: {e}")
+    else:
+        print("  MQTT Logger is already running.")
 
+    # 2. Sensor Hub (Publisher)
     if not _is_running("rpi.sensor_hub.main"):
+        print("  Starting Sensor Hub...")
         sensor_log = Path(project_root) / "sensor_pub.log"
-        with open(sensor_log, "a") as f:
+        try:
             cmd = [sys.executable, "-m", "rpi.sensor_hub.main"]
             if os.name == 'nt': cmd.append("--dummy")
-            subprocess.Popen(cmd, cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+            with open(sensor_log, "a") as f:
+                subprocess.Popen(cmd, cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+            print("  Sensor Hub started.")
+        except Exception as e:
+            print(f"  Failed to start Sensor Hub: {e}")
+    else:
+        print("  Sensor Hub is already running.")
             
+    # 3. Weather Service
     if not _is_running("rpi.services.weather_service"):
+        print("  Starting Weather Service...")
         weather_log = Path(project_root) / "weather_service.log"
-        with open(weather_log, "a") as f:
-            subprocess.Popen([sys.executable, "-m", "rpi.services.weather_service"], cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+        try:
+            with open(weather_log, "a") as f:
+                subprocess.Popen([sys.executable, "-m", "rpi.services.weather_service"], 
+                                 cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+            print("  Weather Service started.")
+        except Exception as e:
+            print(f"  Failed to start Weather Service: {e}")
+    else:
+        print("  Weather Service is already running.")
+    
+    print("--- Background Services Check Complete ---\n")
 
 @app.on_event("startup")
 def startup_event():
     # Ensure DB is initialized
-    p = monthly_db_path(DEFAULT_DB_DIR)
-    conn = connect_db(p)
-    init_db(conn)
-    conn.close()
+    try:
+        p = monthly_db_path(DEFAULT_DB_DIR)
+        print(f"Initializing DB: {p}")
+        conn = connect_db(p)
+        init_db(conn)
+        conn.close()
+        print("DB Initialization successful.")
+    except Exception as e:
+        print(f"DB Initialization failed: {e}")
     
     start_background_services()
 
