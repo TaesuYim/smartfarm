@@ -128,9 +128,38 @@ def get_latest():
 
 @app.get("/api/history")
 def get_history(minutes: int = 60):
+    """Legacy endpoint: get sensor history by minutes."""
     kst = timezone(timedelta(hours=9))
     cutoff = (datetime.now(kst) - timedelta(minutes=minutes)).isoformat(timespec="seconds")
     return _q("SELECT * FROM sensor_snapshot WHERE greenhouse='gh1' AND ts>=? ORDER BY ts", (cutoff,))
+
+@app.get("/api/history/sensors")
+def get_sensor_history(start: str = None, end: str = None):
+    """Get sensor_snapshot data between start and end ISO timestamps."""
+    if not start or not end:
+        kst = timezone(timedelta(hours=9))
+        end_dt = datetime.now(kst)
+        start_dt = end_dt - timedelta(hours=1)
+        start = start_dt.isoformat(timespec="seconds")
+        end = end_dt.isoformat(timespec="seconds")
+    return _q(
+        "SELECT * FROM sensor_snapshot WHERE greenhouse='gh1' AND ts>=? AND ts<=? ORDER BY ts",
+        (start, end)
+    )
+
+@app.get("/api/history/weather")
+def get_weather_history(start: str = None, end: str = None):
+    """Get weather data between start and end ISO timestamps."""
+    if not start or not end:
+        kst = timezone(timedelta(hours=9))
+        end_dt = datetime.now(kst)
+        start_dt = end_dt - timedelta(hours=1)
+        start = start_dt.isoformat(timespec="seconds")
+        end = end_dt.isoformat(timespec="seconds")
+    return _q(
+        "SELECT * FROM weather WHERE greenhouse='gh1' AND ts>=? AND ts<=? ORDER BY ts",
+        (start, end)
+    )
 
 class CommandPayload(BaseModel):
     cmds: Dict[str, Any]
@@ -155,17 +184,26 @@ def send_command(payload: CommandPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/arduino/reset")
-def reset_arduino():
+arduino_relay = None
+
+class PowerPayload(BaseModel):
+    state: str
+
+@app.post("/api/arduino/power")
+def set_arduino_power(payload: PowerPayload):
+    global arduino_relay
     try:
         from gpiozero import OutputDevice
-        import time
-        rl = OutputDevice(17, active_high=True, initial_value=True)
-        rl.off()
-        time.sleep(1)
-        rl.on()
-        rl.close()
-        return {"status": "success"}
+        if arduino_relay is None:
+            # 객체를 전역에 유지하여 핀 상태 초기화 방지
+            arduino_relay = OutputDevice(17, active_high=True, initial_value=None)
+            
+        if payload.state == "on":
+            arduino_relay.on()
+        else:
+            arduino_relay.off()
+            
+        return {"status": "success", "state": payload.state}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

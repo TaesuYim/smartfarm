@@ -99,10 +99,23 @@ def fetch_and_save():
             c = connect_db(db_p); init_db(c); c.close()
             
         with closing(sqlite3.connect(db_p)) as conn:
+            # 1. Save to weather history table
             cols = ", ".join(data.keys())
             placeholders = ", ".join(["?"] * len(data))
             sql = f"INSERT OR REPLACE INTO weather ({cols}) VALUES ({placeholders})"
             conn.execute(sql, list(data.values()))
+            
+            # 2. Update ui_latest for real-time dashboard
+            ui_data = {
+                "ta": data["ta"], "hm": data["hm"], "rn": data["rn"], "ws": data["ws"],
+                "icsr": data["icsr"], "ss": data["ss"], "weather_ts": data["ts"],
+                "weather_fetched_at": data["fetched_at"],
+                "updated_at": datetime.now(KST).isoformat(timespec="seconds")
+            }
+            set_clause = ", ".join([f"{k}=?" for k in ui_data.keys()])
+            sql_ui = f"UPDATE ui_latest SET {set_clause} WHERE greenhouse='gh1'"
+            conn.execute(sql_ui, list(ui_data.values()))
+            
             conn.commit()
         
         print(f"[{datetime.now()}] Weather data saved: {data['ts']}, Temp={data['ta']}")

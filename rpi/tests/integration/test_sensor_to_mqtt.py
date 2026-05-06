@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import time
 import board
 import busio
@@ -15,96 +17,122 @@ client.loop_start()
 
 i2c = busio.I2C(board.SCL, board.SDA)
 
-# ==========================================
-# Sensor 1: Address 0x4B
-# A0: Temperature (Bottom)
-# A1: Humidity (Bottom)
-# A2: Temperature (Top)
-# A3: Humidity (Top)
-# ==========================================
-try:
-    ads_4b = ADS.ADS1115(i2c, address=0x4b)
-    ch_4b = [AnalogIn(ads_4b, i) for i in range(4)]
-except Exception as e:
-    print(f"Failed to initialize ADS1115 at 0x4B: {e}")
-    ads_4b = None
-    ch_4b = []
 
-# ==========================================
-# Sensor 2: Address 0x49
-# A0: CO2
-# A1: Light
-# A2: Soil Moisture 1
-# A3: Soil Moisture 2
-# ==========================================
-try:
-    ads_49 = ADS.ADS1115(i2c, address=0x49)
-    ch_49 = [AnalogIn(ads_49, i) for i in range(4)]
-except Exception as e:
-    print(f"Failed to initialize ADS1115 at 0x49: {e}")
-    ads_49 = None
-    ch_49 = []
+def init_ads(address):
+    try:
+        ads = ADS.ADS1115(i2c, address=address)
+        ads.data_rate = 128
 
-# ==========================================
-# Sensor 3: Address 0x48
-# A0: Soil Moisture 3
-# A1: Soil Moisture 4
-# A2: Soil Moisture 5
-# A3: Soil Moisture 6
-# ==========================================
-try:
-    ads_48 = ADS.ADS1115(i2c, address=0x48)
-    ch_48 = [AnalogIn(ads_48, i) for i in range(4)]
-except Exception as e:
-    print(f"Failed to initialize ADS1115 at 0x48: {e}")
-    ads_48 = None
-    ch_48 = []
+        channels = [AnalogIn(ads, i) for i in range(4)]
 
-# ==========================================
-# Sensor 4: Address 0x4A
-# A0: Future use
-# A1: Future use
-# A2: Future use
-# A3: Future use
-# ==========================================
-try:
-    ads_4a = ADS.ADS1115(i2c, address=0x4a)
-    ch_4a = [AnalogIn(ads_4a, i) for i in range(4)]
-except Exception as e:
-    print(f"Failed to initialize ADS1115 at 0x4A: {e}")
-    ads_4a = None
-    ch_4a = []
+        print("Initialized ADS1115 at 0x%02X" % address)
+        return ads, channels
 
-# Map: (ads_object, channels_list, address_hex_string)
+    except Exception as e:
+        print("Failed to initialize ADS1115 at 0x%02X: %s" % (address, e))
+        return None, []
+
+
+ads_4b, ch_4b = init_ads(0x4B)
+ads_49, ch_49 = init_ads(0x49)
+ads_48, ch_48 = init_ads(0x48)
+ads_4a, ch_4a = init_ads(0x4A)
+
+
 sensors = [
-    (ads_4b, ch_4b, "4B"),
-    (ads_49, ch_49, "49"),
-    (ads_48, ch_48, "48"),
-    (ads_4a, ch_4a, "4A"),
+    {
+        "address": "4B",
+        "ads": ads_4b,
+        "channels": ch_4b,
+        "names": [
+            "temperature_bottom",
+            "humidity_bottom",
+            "temperature_top",
+            "humidity_top",
+        ],
+    },
+    {
+        "address": "49",
+        "ads": ads_49,
+        "channels": ch_49,
+        "names": [
+            "co2",
+            "light",
+            "soil_moisture_1",
+            "soil_moisture_2",
+        ],
+    },
+    {
+        "address": "48",
+        "ads": ads_48,
+        "channels": ch_48,
+        "names": [
+            "soil_moisture_3",
+            "soil_moisture_4",
+            "soil_moisture_5",
+            "soil_moisture_6",
+        ],
+    },
+    {
+        "address": "4A",
+        "ads": ads_4a,
+        "channels": ch_4a,
+        "names": [
+            "future_0",
+            "future_1",
+            "future_2",
+            "future_3",
+        ],
+    },
 ]
+
 
 period = 1.0 / RATE
 
 print("Publishing 16 channels from 4 ADS1115 sensors to MQTT...")
 
+
 while True:
-    for ads, channels, addr in sensors:
+    loop_start = time.monotonic()
+
+    for sensor in sensors:
+        ads = sensor["ads"]
+        channels = sensor["channels"]
+        addr = sensor["address"]
+        names = sensor["names"]
+
         if ads is None:
             continue
+
         try:
             for i, ch in enumerate(channels):
-                # 채널 전환 시 안정화를 위해 첫 번째 값은 무시하고 짧은 딜레이 후 다시 읽습니다.
-                _ = ch.voltage
-                time.sleep(0.1)
-                
-                v = ch.voltage
                 val = ch.value
-                topic_base = f"sensor/ads1115_0x{addr}/a{i}"
-                client.publish(f"{topic_base}/raw", int(val))
-                client.publish(f"{topic_base}/voltage", float(v))
-                print(f"[0x{addr}] A{i}: {val:5d} | {v:.3f}V")
+                v = val * ads.bits_to_volts
+
+                sensor_name = names[i]
+
+                topic_base = "sensor/ads1115_0x%s/a%d" % (addr, i)
+                topic_name = "sensor/%s" % sensor_name
+
+                client.publish(topic_base + "/raw", int(val))
+                client.publish(topic_base + "/voltage", float(v))
+
+                client.publish(topic_name + "/raw", int(val))
+                client.publish(topic_name + "/voltage", float(v))
+
+                print("[0x%s] A%d %-22s: %5d | %.3f V" % (
+                    addr,
+                    i,
+                    sensor_name,
+                    val,
+                    v,
+                ))
+
         except Exception as e:
-            print(f"[0x{addr}] Error reading: {e}")
+            print("[0x%s] Error reading: %s" % (addr, e))
 
     print("-" * 50)
-    time.sleep(period)
+
+    elapsed = time.monotonic() - loop_start
+    sleep_time = max(0, period - elapsed)
+    time.sleep(sleep_time)

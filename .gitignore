@@ -1,14 +1,26 @@
+# Python
 __pycache__/
 *.py[cod]
+*$py.class
+.venv/
+venv/
 
-sensor_snapshot_*/
-sensor_snapshot_*.sqlite3
-smartfarm.sqlite3
+# Databases
+*.db
 data/
-smartfarm_*.sqlite3
-*.sqlite3-journal
-*.sqlite3-wal
-*.sqlite3-shm
 
-weather_data.csv
+# Environment / Secrets
 .env
+
+# Logs
+*.log
+mqtt_logger.log
+sensor_pub.log
+weather_service.log
+
+# Streamlit
+.streamlit/
+
+# OS
+.DS_Store
+.history/

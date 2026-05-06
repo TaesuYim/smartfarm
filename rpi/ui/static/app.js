@@ -1,158 +1,175 @@
-// --- Configuration ---
-const API_BASE = '/api';
-let uiRefreshInterval = 5000;
+// ═══════════════════════════════════════════════════════
+//  SFES Lab — Frontend Application
+//  FastAPI backend + vanilla JS  |  1280×800 kiosk
+// ═══════════════════════════════════════════════════════
+
+const API = '/api';
+let refreshMs = 5000;
 let refreshTimer = null;
-let envChartObj = null;
-let soilChartObj = null;
+let chartEnv = null, chartSoil = null, chartPar = null;
 
-// --- Tab Switching ---
+// ─── Clock ───
+function tickClock() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('clock').textContent =
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ─── Tab Switching ───
 document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
-        e.target.classList.add('active');
-        document.getElementById(e.target.dataset.target).classList.add('active');
-
-        if(e.target.dataset.target === 'tab-graph' && !envChartObj) {
-            loadGraphData();
-        }
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     });
 });
 
-// --- Time Update ---
-setInterval(() => {
-    const now = new Date();
-    document.getElementById('current-time').innerText = now.toLocaleString('ko-KR');
-}, 1000);
-
-// --- Fetch Latest Data ---
-async function fetchLatest() {
-    try {
-        const res = await fetch(`${API_BASE}/latest`);
-        const data = await res.json();
-        updateMonitoring(data);
-        updateControlUI(data);
-    } catch (e) {
-        console.error('Failed to fetch latest data', e);
-    }
+// ─── Helpers ───
+const fmt = (v, d = 1, u = '') => (v !== null && v !== undefined) ? Number(v).toFixed(d) + u : '—';
+function showToast(id) {
+    const t = document.getElementById(id);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function updateMonitoring(data) {
-    const latest = data.latest || {};
-    
-    // Heartbeat
+// ═══════════════════════════════════════════════════════
+//  MONITORING TAB
+// ═══════════════════════════════════════════════════════
+
+function renderMonitoring(data) {
+    const L = data.latest || {};
+
+    // ── Heartbeat dots ──
     const timeout = parseInt(data.settings?.heartbeat_timeout_sec || 10) * 1000;
-    const now = new Date().getTime();
-    
-    ['arduino_node_1', 'arduino_node_2'].forEach((src, idx) => {
-        const hb = data.heartbeat[src];
-        const dot = document.querySelector(`#node${idx+1}-status .dot`);
-        if(hb && hb.ts) {
-            const last = new Date(hb.ts).getTime();
-            if(now - last < timeout) {
-                dot.classList.add('on');
-            } else {
-                dot.classList.remove('on');
-            }
+    const now = Date.now();
+    ['arduino_node_1', 'arduino_node_2'].forEach((src, i) => {
+        const hb = data.heartbeat?.[src];
+        const dot = document.getElementById('dot-node' + (i + 1));
+        if (hb && hb.ts) {
+            const age = now - new Date(hb.ts).getTime();
+            dot.classList.toggle('online', age < timeout);
         } else {
-            dot.classList.remove('on');
+            dot.classList.remove('online');
         }
     });
 
-    // Env Sensors
-    const envHtml = `
-        <div class="metric-card"><div class="metric-icon">🌡️</div><div class="metric-label">온도(하부)</div><div class="metric-val">${latest.temp_pot_c !== null ? latest.temp_pot_c.toFixed(1)+'°C' : '—'}</div></div>
-        <div class="metric-card"><div class="metric-icon">💧</div><div class="metric-label">습도(하부)</div><div class="metric-val">${latest.hum_pot_pct !== null ? latest.hum_pot_pct.toFixed(1)+'%' : '—'}</div></div>
-        <div class="metric-card"><div class="metric-icon">🌡️</div><div class="metric-label">온도(상부)</div><div class="metric-val">${latest.temp_top_c !== null ? latest.temp_top_c.toFixed(1)+'°C' : '—'}</div></div>
-        <div class="metric-card"><div class="metric-icon">💧</div><div class="metric-label">습도(상부)</div><div class="metric-val">${latest.hum_top_pct !== null ? latest.hum_top_pct.toFixed(1)+'%' : '—'}</div></div>
-        <div class="metric-card"><div class="metric-icon">💨</div><div class="metric-label">CO₂</div><div class="metric-val">${latest.co2_ppm !== null ? latest.co2_ppm.toFixed(0)+'ppm' : '—'}</div></div>
-        <div class="metric-card"><div class="metric-icon">☀️</div><div class="metric-label">PAR</div><div class="metric-val">${latest.par_w_m2 !== null ? latest.par_w_m2.toFixed(1)+'W/m²' : '—'}</div></div>
-    `;
-    document.getElementById('env-sensors').innerHTML = envHtml;
+    // ── Environment sensors ──
+    const envItems = [
+        { icon: '🌡️', name: '온도(하부)', val: fmt(L.temp_pot_c, 1, '°C') },
+        { icon: '💧', name: '습도(하부)', val: fmt(L.hum_pot_pct, 1, '%') },
+        { icon: '🌡️', name: '온도(상부)', val: fmt(L.temp_top_c, 1, '°C') },
+        { icon: '💧', name: '습도(상부)', val: fmt(L.hum_top_pct, 1, '%') },
+        { icon: '💨', name: 'CO₂', val: fmt(L.co2_ppm, 0, ' ppm') },
+        { icon: '☀️', name: 'PAR', val: fmt(L.par_w_m2, 1, ' W/m²') },
+    ];
+    document.getElementById('env-metrics').innerHTML = envItems.map(m =>
+        `<div class="metric"><div class="metric-icon">${m.icon}</div><div class="metric-name">${m.name}</div><div class="metric-value">${m.val}</div></div>`
+    ).join('');
 
-    // Soil Sensors
+    // ── Soil sensors ──
     let soilHtml = '';
-    for(let i=1; i<=6; i++) {
-        const val = latest[`soil_moisture_${i}_pct`];
-        soilHtml += `<div class="metric-card"><div class="metric-icon">🌱</div><div class="metric-label">토양${i}</div><div class="metric-val">${val !== null && val !== undefined ? val.toFixed(1)+'%' : '—'}</div></div>`;
+    for (let i = 1; i <= 6; i++) {
+        const v = L['soil_moisture_' + i + '_pct'];
+        soilHtml += `<div class="metric"><div class="metric-icon">🌱</div><div class="metric-name">토양 ${i}</div><div class="metric-value">${fmt(v, 1, '%')}</div></div>`;
     }
-    document.getElementById('soil-sensors').innerHTML = soilHtml;
+    document.getElementById('soil-metrics').innerHTML = soilHtml;
 
-    // Weather
-    if(latest.weather_ts) {
-        document.getElementById('weather-info').innerHTML = `
-            🌡️ 외기온: <b>${latest.ta || '—'}°C</b> &nbsp; 💧 외습도: <b>${latest.hm || '—'}%</b><br>
-            ☔ 강수: <b>${latest.rn || '—'}mm</b> &nbsp; 💨 풍속: <b>${latest.ws || '—'}m/s</b><br>
-            ☀️ 일사: <b>${latest.icsr || '—'}MJ/m²</b> &nbsp; 🕐 일조: <b>${latest.ss || '—'}hr</b>
-        `;
-    }
+    // ── Weather ──
+    const wItems = [
+        { label: '🌡️ 외기온', val: fmt(L.ta, 1, '°C') },
+        { label: '💧 외습도', val: fmt(L.hm, 1, '%') },
+        { label: '☔ 강수', val: fmt(L.rn, 1, ' mm') },
+        { label: '💨 풍속', val: fmt(L.ws, 1, ' m/s') },
+        { label: '☀️ 일사', val: fmt(L.icsr, 2, ' MJ') },
+        { label: '🕐 일조', val: fmt(L.ss, 1, ' hr') },
+    ];
+    document.getElementById('weather-grid').innerHTML = wItems.map(w =>
+        `<div class="weather-item"><span class="wi-label">${w.label}</span><span class="wi-val">${w.val}</span></div>`
+    ).join('');
+    document.getElementById('weather-time').textContent =
+        L.weather_ts ? `날씨 업데이트: ${L.weather_ts}` : '';
 
-    document.getElementById('last-update-monitor').innerText = `마지막 업데이트: ${latest.sensor_ts || '—'}`;
+    // ── Last update ──
+    document.getElementById('last-update').textContent =
+        '마지막 업데이트: ' + (L.sensor_ts || '—');
 
-    // Settings sync
-    if(data.settings) {
-        if(!document.getElementById('s-ui-ref').dataset.userEdited) {
-            document.getElementById('s-ui-ref').value = data.settings.ui_refresh_sec || 5;
-            uiRefreshInterval = parseInt(data.settings.ui_refresh_sec || 5) * 1000;
-        }
-        if(!document.getElementById('s-meas').dataset.userEdited) document.getElementById('s-meas').value = data.settings.measurement_interval_sec || 1;
-        if(!document.getElementById('s-hb').dataset.userEdited) document.getElementById('s-hb').value = data.settings.heartbeat_timeout_sec || 10;
-    }
+    // ── Sync settings inputs (if user hasn't edited) ──
+    const S = data.settings || {};
+    syncSetting('s-refresh', S.ui_refresh_sec, 5);
+    syncSetting('s-measure', S.measurement_interval_sec, 1);
+    syncSetting('s-hb-timeout', S.heartbeat_timeout_sec, 10);
 }
 
-// --- Control Tab Logic ---
-let isUpdatingUI = false;
+function syncSetting(id, val, fallback) {
+    const el = document.getElementById(id);
+    if (!el.dataset.edited) el.value = val || fallback;
+}
 
-function updateControlUI(data) {
-    // Only update UI from DB if user isn't currently dragging sliders
-    if(isUpdatingUI || document.querySelector('.tab-content.active').id !== 'tab-control') return;
-    isUpdatingUI = true;
-    const l = data.latest || {};
-    
-    const setVal = (id, val) => { const el = document.getElementById(id); if(el && !el.dataset.dragging) { el.value = val || 0; document.getElementById(id.replace('c-','v-')).innerText = (val||0)+'%'; }};
-    const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
-    const setRadio = (name, val) => { const el = document.querySelector(`input[name="${name}"][value="${val || 'stop'}"]`); if(el) el.checked = true; };
+// ═══════════════════════════════════════════════════════
+//  CONTROL TAB
+// ═══════════════════════════════════════════════════════
 
-    setVal('c-vent', l.vent_fan_pwm_pct);
-    setVal('c-h1', l.heater_1_pwm_pct);
-    setVal('c-h2', l.heater_2_pwm_pct);
-    setVal('c-cf1', l.circ_fan_1_pwm_pct);
-    setVal('c-cf2', l.circ_fan_2_pwm_pct);
-    setVal('c-pump', l.pump_pwm_pct);
-    setVal('c-br', l.led_brightness_pct);
+let updatingCtrl = false;
 
-    setCheck('c-mist', l.mist_on);
-    setCheck('c-v1', l.valve_pot_1_on); setCheck('c-v2', l.valve_pot_2_on);
-    setCheck('c-v3', l.valve_pot_3_on); setCheck('c-v4', l.valve_pot_4_on);
-    setCheck('c-v5', l.valve_pot_5_on); setCheck('c-v6', l.valve_pot_6_on);
-    setCheck('c-fog', l.valve_fog_on);
+function renderControls(data) {
+    if (updatingCtrl) return;
+    // Only auto-sync when control tab is not active
+    const activeTab = document.querySelector('.tab-panel.active');
+    if (activeTab && activeTab.id === 'tab-control') return;
 
-    setRadio('win1', l.window_1_cmd);
-    setRadio('win2', l.window_2_cmd);
-    setRadio('scr', l.shading_screen_cmd);
+    updatingCtrl = true;
+    const L = data.latest || {};
 
-    if(l.led_r !== undefined) {
-        const hex = "#" + (1 << 24 | l.led_r << 16 | l.led_g << 8 | l.led_b).toString(16).slice(1);
+    const setSlider = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.dragging) {
+            el.value = val || 0;
+            const vEl = document.getElementById(id.replace('c-', 'v-'));
+            if (vEl) vEl.textContent = (val || 0) + '%';
+        }
+    };
+    const setToggle = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+    const setRadio = (name, val) => { const el = document.querySelector(`input[name="${name}"][value="${val || 'stop'}"]`); if (el) el.checked = true; };
+
+    setSlider('c-vent', L.vent_fan_pwm_pct);
+    setSlider('c-h1', L.heater_1_pwm_pct);
+    setSlider('c-h2', L.heater_2_pwm_pct);
+    setSlider('c-cf1', L.circ_fan_1_pwm_pct);
+    setSlider('c-cf2', L.circ_fan_2_pwm_pct);
+    setSlider('c-pump', L.pump_pwm_pct);
+    setSlider('c-br', L.led_brightness_pct);
+
+    setToggle('c-mist', L.mist_on);
+    for (let i = 1; i <= 6; i++) setToggle('c-v' + i, L['valve_pot_' + i + '_on']);
+    setToggle('c-fog', L.valve_fog_on);
+
+    setRadio('win1', L.window_1_cmd);
+    setRadio('win2', L.window_2_cmd);
+    setRadio('scr', L.shading_screen_cmd);
+
+    if (L.led_r !== undefined && L.led_r !== null) {
+        const hex = '#' + ((1 << 24) | (L.led_r << 16) | (L.led_g << 8) | L.led_b).toString(16).slice(1);
         document.getElementById('c-color').value = hex;
     }
 
-    isUpdatingUI = false;
+    updatingCtrl = false;
 }
 
-// Attach listeners for controls to send MQTT
-let commandTimeout = null;
-
-function gatherCommands() {
+// ── Gather all control values ──
+function gatherCmds() {
     const hex = document.getElementById('c-color').value;
     return {
-        vent_fan_pwm_pct: parseInt(document.getElementById('c-vent').value),
-        heater_1_pwm_pct: parseInt(document.getElementById('c-h1').value),
-        heater_2_pwm_pct: parseInt(document.getElementById('c-h2').value),
-        circ_fan_1_pwm_pct: parseInt(document.getElementById('c-cf1').value),
-        circ_fan_2_pwm_pct: parseInt(document.getElementById('c-cf2').value),
-        pump_pwm_pct: parseInt(document.getElementById('c-pump').value),
-        led_brightness_pct: parseInt(document.getElementById('c-br').value),
+        vent_fan_pwm_pct: +document.getElementById('c-vent').value,
+        heater_1_pwm_pct: +document.getElementById('c-h1').value,
+        heater_2_pwm_pct: +document.getElementById('c-h2').value,
+        circ_fan_1_pwm_pct: +document.getElementById('c-cf1').value,
+        circ_fan_2_pwm_pct: +document.getElementById('c-cf2').value,
+        pump_pwm_pct: +document.getElementById('c-pump').value,
+        led_brightness_pct: +document.getElementById('c-br').value,
         mist_on: document.getElementById('c-mist').checked ? 1 : 0,
         valve_pot_1_on: document.getElementById('c-v1').checked ? 1 : 0,
         valve_pot_2_on: document.getElementById('c-v2').checked ? 1 : 0,
@@ -164,129 +181,286 @@ function gatherCommands() {
         window_1_cmd: document.querySelector('input[name="win1"]:checked').value,
         window_2_cmd: document.querySelector('input[name="win2"]:checked').value,
         shading_screen_cmd: document.querySelector('input[name="scr"]:checked').value,
-        led_r: parseInt(hex.slice(1,3), 16),
-        led_g: parseInt(hex.slice(3,5), 16),
-        led_b: parseInt(hex.slice(5,7), 16),
+        led_r: parseInt(hex.slice(1, 3), 16),
+        led_g: parseInt(hex.slice(3, 5), 16),
+        led_b: parseInt(hex.slice(5, 7), 16),
     };
 }
 
-function showToast(id) {
-    const t = document.getElementById(id);
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3000);
-}
-
 async function sendCommand() {
-    const cmds = gatherCommands();
     try {
-        await fetch(`${API_BASE}/command`, {
+        await fetch(API + '/command', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({cmds})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cmds: gatherCmds() })
         });
         showToast('cmd-toast');
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error('Command send failed', e); }
 }
 
-function debounceCommand() {
-    clearTimeout(commandTimeout);
-    commandTimeout = setTimeout(sendCommand, 300);
+let cmdTimer = null;
+function debounceCmd() {
+    clearTimeout(cmdTimer);
+    cmdTimer = setTimeout(sendCommand, 300);
 }
 
-// Bind Sliders
-document.querySelectorAll('input[type="range"]').forEach(el => {
-    el.addEventListener('input', (e) => {
-        e.target.dataset.dragging = true;
-        document.getElementById(e.target.id.replace('c-', 'v-')).innerText = e.target.value + '%';
+// Bind sliders
+document.querySelectorAll('#tab-control input[type="range"]').forEach(el => {
+    el.addEventListener('input', e => {
+        e.target.dataset.dragging = '1';
+        const vEl = document.getElementById(e.target.id.replace('c-', 'v-'));
+        if (vEl) vEl.textContent = e.target.value + '%';
     });
-    el.addEventListener('change', (e) => {
+    el.addEventListener('change', e => {
         delete e.target.dataset.dragging;
-        debounceCommand();
+        debounceCmd();
     });
 });
 
-// Bind Toggles & Radios & Color
-document.querySelectorAll('input[type="checkbox"], input[type="radio"], input[type="color"]').forEach(el => {
+// Bind toggles, radios, color
+document.querySelectorAll('#tab-control input[type="checkbox"], #tab-control input[type="radio"], #tab-control input[type="color"]').forEach(el => {
     el.addEventListener('change', sendCommand);
 });
 
-// --- Graph Tab ---
-document.getElementById('btn-load-graph').addEventListener('click', loadGraphData);
+// ═══════════════════════════════════════════════════════
+//  GRAPH TAB
+// ═══════════════════════════════════════════════════════
 
-async function loadGraphData() {
-    const minutes = document.getElementById('g-minutes').value || 60;
-    const res = await fetch(`${API_BASE}/history?minutes=${minutes}`);
-    const data = await res.json();
+// Default range: last 60 minutes
+(function initGraphDefaults() {
+    const now = new Date();
+    const ago = new Date(now.getTime() - 60 * 60 * 1000);
+    const toLocal = d => {
+        const off = d.getTimezoneOffset();
+        return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+    };
+    document.getElementById('g-start').value = toLocal(ago);
+    document.getElementById('g-end').value = toLocal(now);
+})();
 
-    const labels = data.map(d => new Date(d.ts).toLocaleTimeString('ko-KR'));
-    
-    const envDatasets = [
-        { label: '온도(하부)', data: data.map(d=>d.temp_pot_c), borderColor: '#ef4444', tension: 0.2 },
-        { label: '습도(하부)', data: data.map(d=>d.hum_pot_pct), borderColor: '#0ea5e9', tension: 0.2 },
-        { label: 'CO2', data: data.map(d=>d.co2_ppm), borderColor: '#8b5cf6', yAxisID: 'y1', tension: 0.2 }
-    ];
+document.getElementById('btn-query').addEventListener('click', loadGraphs);
 
-    const soilDatasets = [1,2,3,4,5,6].map(i => ({
-        label: `토양${i}`, data: data.map(d=>d[`soil_moisture_${i}_pct`]),
-        borderColor: `hsl(${i*40}, 70%, 50%)`, tension: 0.2
-    }));
+async function loadGraphs() {
+    const start = document.getElementById('g-start').value;
+    const end = document.getElementById('g-end').value;
+    if (!start || !end) return;
 
-    if(envChartObj) envChartObj.destroy();
-    if(soilChartObj) soilChartObj.destroy();
+    // datetime-local gives "YYYY-MM-DDTHH:MM" without seconds or timezone.
+    // Append seconds and KST offset (+09:00) to match DB timestamps.
+    const startISO = `${start}:00+09:00`;
+    const endISO = `${end}:00+09:00`;
 
-    Chart.defaults.color = '#94a3b8';
-    const commonOpt = { responsive: true, maintainAspectRatio: false, animation: {duration: 0} };
 
-    envChartObj = new Chart(document.getElementById('envChart'), {
-        type: 'line', data: { labels, datasets: envDatasets },
-        options: { ...commonOpt, scales: {
-            y: { type: 'linear', position: 'left' },
-            y1: { type: 'linear', position: 'right', grid: {drawOnChartArea: false} }
-        }}
+    let sensorData = [], weatherData = [];
+    try {
+        const [sRes, wRes] = await Promise.all([
+            fetch(`${API}/history/sensors?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`),
+            fetch(`${API}/history/weather?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`)
+        ]);
+        sensorData = await sRes.json();
+        weatherData = await wRes.json();
+    } catch (e) { console.error('Graph data fetch failed', e); }
+
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+    const noAnim = { animation: { duration: 0 } };
+
+    // ── Environment + Weather chart (dual Y-axis) ──
+    if (chartEnv) chartEnv.destroy();
+    const envLabels = sensorData.map(d => d.ts);
+    const weatherLabels = weatherData.map(d => d.ts);
+
+    chartEnv = new Chart(document.getElementById('chart-env'), {
+        type: 'line',
+        data: {
+            datasets: [
+                { label: '내부 온도 (°C)', data: sensorData.map(d => ({ x: d.ts, y: d.temp_pot_c })), borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: '내부 습도 (%)', data: sensorData.map(d => ({ x: d.ts, y: d.hum_pot_pct })), borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: '외기 온도 (°C)', data: weatherData.map(d => ({ x: d.ts, y: d.ta })), borderColor: '#f97316', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: '외기 습도 (%)', data: weatherData.map(d => ({ x: d.ts, y: d.hm })), borderColor: '#06b6d4', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: 'CO₂ (ppm)', data: sensorData.map(d => ({ x: d.ts, y: d.co2_ppm })), borderColor: '#a855f7', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y1' },
+            ]
+        },
+        options: {
+            ...noAnim,
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { type: 'time', time: { tooltipFormat: 'MM-dd HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } } },
+                y: { type: 'linear', position: 'left', title: { display: true, text: '온도(°C) / 습도(%)' } },
+                y1: { type: 'linear', position: 'right', title: { display: true, text: 'CO₂ (ppm)' }, grid: { drawOnChartArea: false } }
+            },
+            plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } }
+        }
     });
 
-    soilChartObj = new Chart(document.getElementById('soilChart'), {
-        type: 'line', data: { labels, datasets: soilDatasets },
-        options: commonOpt
+    // ── Soil moisture chart ──
+    if (chartSoil) chartSoil.destroy();
+    const soilColors = ['#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
+    chartSoil = new Chart(document.getElementById('chart-soil'), {
+        type: 'line',
+        data: {
+            datasets: [1, 2, 3, 4, 5, 6].map((i, idx) => ({
+                label: `토양 ${i}`,
+                data: sensorData.map(d => ({ x: d.ts, y: d['soil_moisture_' + i + '_pct'] })),
+                borderColor: soilColors[idx], borderWidth: 1.5, pointRadius: 0, tension: 0.3
+            }))
+        },
+        options: {
+            ...noAnim,
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { type: 'time', time: { tooltipFormat: 'MM-dd HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } } },
+                y: { title: { display: true, text: '토양수분 (%)' } }
+            },
+            plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } }
+        }
+    });
+
+    // ── PAR chart ──
+    if (chartPar) chartPar.destroy();
+    chartPar = new Chart(document.getElementById('chart-par'), {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'PAR (W/m²)',
+                data: sensorData.map(d => ({ x: d.ts, y: d.par_w_m2 })),
+                borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.08)',
+                borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true
+            }]
+        },
+        options: {
+            ...noAnim,
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { type: 'time', time: { tooltipFormat: 'MM-dd HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } } },
+                y: { title: { display: true, text: 'PAR (W/m²)' } }
+            },
+            plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } }
+        }
     });
 }
 
-// --- Settings & Reset ---
-['s-ui-ref', 's-meas', 's-hb'].forEach(id => {
-    document.getElementById(id).addEventListener('input', e => e.target.dataset.userEdited = true);
+// ═══════════════════════════════════════════════════════
+//  SETTINGS TAB
+// ═══════════════════════════════════════════════════════
+
+['s-refresh', 's-measure', 's-hb-timeout'].forEach(id => {
+    document.getElementById(id).addEventListener('input', e => { e.target.dataset.edited = '1'; });
 });
 
 document.getElementById('btn-save-settings').addEventListener('click', async () => {
     const payload = {
-        ui_refresh_sec: document.getElementById('s-ui-ref').value,
-        measurement_interval_sec: document.getElementById('s-meas').value,
-        heartbeat_timeout_sec: document.getElementById('s-hb').value
+        ui_refresh_sec: document.getElementById('s-refresh').value,
+        measurement_interval_sec: document.getElementById('s-measure').value,
+        heartbeat_timeout_sec: document.getElementById('s-hb-timeout').value
     };
-    await fetch(`${API_BASE}/settings`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-    });
-    uiRefreshInterval = parseInt(payload.ui_refresh_sec) * 1000;
-    resetLoop();
-    showToast('settings-toast');
-    ['s-ui-ref', 's-meas', 's-hb'].forEach(id => delete document.getElementById(id).dataset.userEdited);
-});
-
-document.getElementById('btn-reset-arduino').addEventListener('click', async () => {
-    if(!confirm("아두이노 전원을 리셋하시겠습니까?")) return;
-    const stat = document.getElementById('reset-status');
-    stat.innerText = '리셋 중...';
     try {
-        await fetch(`${API_BASE}/arduino/reset`, {method: 'POST'});
-        stat.innerText = '리셋 완료!';
-    } catch(e) { stat.innerText = '리셋 실패'; }
-    setTimeout(() => stat.innerText='', 3000);
+        await fetch(API + '/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        refreshMs = parseInt(payload.ui_refresh_sec) * 1000;
+        startLoop();
+        showToast('settings-toast');
+        ['s-refresh', 's-measure', 's-hb-timeout'].forEach(id => delete document.getElementById(id).dataset.edited);
+    } catch (e) { console.error('Settings save failed', e); }
 });
 
-// --- Loop ---
-function resetLoop() {
-    if(refreshTimer) clearInterval(refreshTimer);
-    fetchLatest();
-    refreshTimer = setInterval(fetchLatest, uiRefreshInterval);
+// ═══════════════════════════════════════════════════════
+//  ARDUINO POWER
+// ═══════════════════════════════════════════════════════
+
+document.getElementById('c-arduino-power').addEventListener('change', async (e) => {
+    const isON = e.target.checked;
+    if (!isON) {
+        if (!confirm('아두이노 전원을 정말로 끄시겠습니까? 시스템이 작동을 멈춥니다.')) {
+            e.target.checked = true; // 취소 시 토글 복구
+            return;
+        }
+    }
+    const msg = document.getElementById('reset-msg');
+    msg.textContent = isON ? '전원 켜는 중...' : '전원 끄는 중...';
+    try {
+        const res = await fetch(API + '/arduino/power', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: isON ? "on" : "off" })
+        });
+        msg.textContent = res.ok ? (isON ? '전원 켜짐' : '전원 꺼짐') : '명령 실패';
+    } catch (err) { 
+        msg.textContent = '명령 실패'; 
+        e.target.checked = !isON; // 실패 시 토글 복구
+    }
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+});
+
+// ═══════════════════════════════════════════════════════
+//  DATA FETCH LOOP
+// ═══════════════════════════════════════════════════════
+
+async function fetchLatest() {
+    try {
+        const res = await fetch(API + '/latest');
+        const data = await res.json();
+        renderMonitoring(data);
+        renderControls(data);
+
+        // Update refresh interval from server
+        if (data.settings?.ui_refresh_sec) {
+            const newMs = parseInt(data.settings.ui_refresh_sec) * 1000;
+            if (newMs !== refreshMs) {
+                refreshMs = newMs;
+                startLoop();
+            }
+        }
+    } catch (e) { console.error('Fetch latest failed', e); }
 }
-resetLoop();
+
+function startLoop() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    fetchLatest();
+    refreshTimer = setInterval(fetchLatest, refreshMs);
+}
+
+// ═══════════════════════════════════════════════════════
+//  INITIAL CALIBRATION (WINDOW 5S CLOSE)
+// ═══════════════════════════════════════════════════════
+
+async function runInitialCalibration() {
+    console.log("Starting initial calibration: Closing windows (reversed) for 5s...");
+    const closeCmds = {
+        window_1_cmd: "open",  // Reversed to match actual motor
+        window_2_cmd: "open"
+    };
+
+    try {
+        // 1. Send close command
+        await fetch(API + '/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cmds: closeCmds })
+        });
+
+        // 2. Wait for 5 seconds
+        setTimeout(async () => {
+            console.log("Calibration complete: Stopping windows.");
+            const stopCmds = {
+                window_1_cmd: "stop",
+                window_2_cmd: "stop"
+            };
+            await fetch(API + '/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cmds: stopCmds })
+            });
+        }, 5000);
+    } catch (e) {
+        console.error("Initial calibration failed", e);
+    }
+}
+
+// Start everything
+runInitialCalibration();
+startLoop();
