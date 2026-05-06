@@ -20,7 +20,7 @@ project_root = str(Path(__file__).resolve().parents[2])
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from rpi.logger.db import monthly_db_path, DEFAULT_DB_DIR, now_kst_iso
+from rpi.logger.db import monthly_db_path, DEFAULT_DB_DIR, now_kst_iso, init_db, connect_db
 
 app = FastAPI(title="SFES Lab API")
 
@@ -50,6 +50,12 @@ def start_background_services():
 
 @app.on_event("startup")
 def startup_event():
+    # Ensure DB is initialized
+    p = monthly_db_path(DEFAULT_DB_DIR)
+    conn = connect_db(p)
+    init_db(conn)
+    conn.close()
+    
     start_background_services()
 
 # --- DB Helpers ---
