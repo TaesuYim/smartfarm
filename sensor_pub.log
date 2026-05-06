@@ -12186,4 +12186,24 @@ ADS1115 ì´ˆê¸°í™” ì¤‘...
 [2026-05-04T18:12:46+09:00] ë°œí–‰ â†’ sf/gh1/sensors/snapshot
 [2026-05-04T18:12:47+09:00] ë°œí–‰ â†’ sf/gh1/sensors/snapshot
 [2026-05-04T18:12:48+09:00] ë°œí–‰ â†’ sf/gh1/sensors/snapshot
-[2026-05-04T18:12:49+09:00] ë°œí–‰ â†’ sf/gh1/sensors/snapshot
+[2026-05-04T18:12:49+09:00] ë°œí–‰ â†’ sf/gh1/sensors/snapshot=== SmartFarm Sensor Snapshot Publisher ===
+  ¿Â½Ç: gh1
+  MQTT ÅäÇÈ: sf/gh1/sensors/snapshot
+  ¹ßÇà ÁÖ±â: 1.0s
+  ¸ğµå: ´õ¹Ì µ¥ÀÌÅÍ (Hardware Not Found or Dummy Flag)
+
+MQTT ¿¬°á ½ÇÆĞ: [WinError 10061] ´ë»ó ÄÄÇ»ÅÍ¿¡¼­ ¿¬°áÀ» °ÅºÎÇßÀ¸¹Ç·Î ¿¬°áÇÏÁö ¸øÇß½À´Ï´Ù
+=== SmartFarm Sensor Snapshot Publisher ===
+  ¿Â½Ç: gh1
+  MQTT ÅäÇÈ: sf/gh1/sensors/snapshot
+  ¹ßÇà ÁÖ±â: 1.0s
+  ¸ğµå: ´õ¹Ì µ¥ÀÌÅÍ (Hardware Not Found or Dummy Flag)
+
+MQTT ¿¬°á ½ÇÆĞ: [WinError 10061] ´ë»ó ÄÄÇ»ÅÍ¿¡¼­ ¿¬°áÀ» °ÅºÎÇßÀ¸¹Ç·Î ¿¬°áÇÏÁö ¸øÇß½À´Ï´Ù
+=== SmartFarm Sensor Snapshot Publisher ===
+  ¿Â½Ç: gh1
+  MQTT ÅäÇÈ: sf/gh1/sensors/snapshot
+  ¹ßÇà ÁÖ±â: 1.0s
+  ¸ğµå: ´õ¹Ì µ¥ÀÌÅÍ (Hardware Not Found or Dummy Flag)
+
+MQTT ¿¬°á ½ÇÆĞ: [WinError 10061] ´ë»ó ÄÄÇ»ÅÍ¿¡¼­ ¿¬°áÀ» °ÅºÎÇßÀ¸¹Ç·Î ¿¬°áÇÏÁö ¸øÇß½À´Ï´Ù

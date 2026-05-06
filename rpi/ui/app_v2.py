@@ -5,7 +5,7 @@
     streamlit run rpi/ui/app_v2.py
 """
 
-import json, sys, sqlite3, subprocess, time
+import json, sys, sqlite3, subprocess, time, os
 import pandas as pd
 from pathlib import Path
 from contextlib import closing
@@ -34,6 +34,7 @@ KST = timezone(timedelta(hours=9))
 @st.cache_resource
 def _start_background_services():
     def _is_running(pattern):
+        if os.name == 'nt': return False # Windows에서는 중복 실행 방지를 st.cache_resource에 의존
         try: return subprocess.run(["pgrep", "-f", pattern], capture_output=True).returncode == 0
         except: return False
 
@@ -45,7 +46,9 @@ def _start_background_services():
     if not _is_running("test_sensor_snapshot_publish"):
         sensor_log = Path(project_root) / "sensor_pub.log"
         with open(sensor_log, "a") as f:
-            subprocess.Popen([sys.executable, "-m", "rpi.tests.integration.test_sensor_snapshot_publish"], cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+            cmd = [sys.executable, "-m", "rpi.tests.integration.test_sensor_snapshot_publish"]
+            if os.name == 'nt': cmd.append("--dummy")
+            subprocess.Popen(cmd, cwd=project_root, stdout=f, stderr=f, start_new_session=True)
             
     if not _is_running("rpi.services.weather_service"):
         weather_log = Path(project_root) / "weather_service.log"
@@ -73,6 +76,12 @@ _start_background_services()
 
 @st.cache_resource
 def get_relay():
+    if os.name == 'nt':
+        # Windows에서는 가상의 릴레이 객체 반환
+        class DummyRelay:
+            def on(self): pass
+            def off(self): pass
+        return DummyRelay()
     try:
         from gpiozero import OutputDevice
         return OutputDevice(17, active_high=True, initial_value=True)

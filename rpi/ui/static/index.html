@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SFES Lab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-title">🌱 SFES Lab</div>
+        <div class="header-time" id="current-time">YYYY-MM-DD HH:MM:SS</div>
+        <div class="header-status">
+            <div class="status-indicator" id="node1-status"><span class="dot"></span>Node1</div>
+            <div class="status-indicator" id="node2-status"><span class="dot"></span>Node2</div>
+        </div>
+    </header>
+
+    <nav class="app-nav">
+        <button class="tab-btn active" data-target="tab-monitor">📊 모니터링</button>
+        <button class="tab-btn" data-target="tab-control">🎛️ 제어</button>
+        <button class="tab-btn" data-target="tab-graph">📈 그래프</button>
+        <button class="tab-btn" data-target="tab-settings">⚙️ 설정</button>
+    </nav>
+
+    <main class="app-main">
+        <!-- 1. Monitoring Tab -->
+        <section id="tab-monitor" class="tab-content active">
+            <h2 class="section-title">🌡️ 환경 센서</h2>
+            <div class="card-grid" id="env-sensors">
+                <!-- Data injected by JS -->
+            </div>
+
+            <h2 class="section-title">🌱 토양 수분</h2>
+            <div class="card-grid" id="soil-sensors">
+                <!-- Data injected by JS -->
+            </div>
+
+            <div class="info-grid">
+                <div class="glass-card weather-card">
+                    <h3>외부 날씨</h3>
+                    <div id="weather-info">데이터 대기 중...</div>
+                </div>
+                <div class="glass-card action-card">
+                    <h3>시스템 제어</h3>
+                    <button id="btn-reset-arduino" class="danger-btn">⚠️ 아두이노 전원 리셋</button>
+                    <div id="reset-status" class="status-msg"></div>
+                </div>
+            </div>
+            <div class="last-update" id="last-update-monitor">마지막 업데이트: —</div>
+        </section>
+
+        <!-- 2. Control Tab -->
+        <section id="tab-control" class="tab-content">
+            <div class="control-grid">
+                <div class="glass-card">
+                    <h3>🌬️ 환기 · 난방</h3>
+                    <div class="control-group"><label>환기팬</label><input type="range" id="c-vent" min="0" max="100" value="0"><span id="v-vent">0%</span></div>
+                    <div class="control-group"><label>히터1</label><input type="range" id="c-h1" min="0" max="100" value="0"><span id="v-h1">0%</span></div>
+                    <div class="control-group"><label>히터2</label><input type="range" id="c-h2" min="0" max="100" value="0"><span id="v-h2">0%</span></div>
+                    <div class="control-group"><label>순환팬1</label><input type="range" id="c-cf1" min="0" max="100" value="0"><span id="v-cf1">0%</span></div>
+                    <div class="control-group"><label>순환팬2</label><input type="range" id="c-cf2" min="0" max="100" value="0"><span id="v-cf2">0%</span></div>
+                    <div class="control-group switch-group"><label>미스트</label><label class="switch"><input type="checkbox" id="c-mist"><span class="slider round"></span></label></div>
+                </div>
+                
+                <div class="glass-card">
+                    <h3>💧 관수</h3>
+                    <div class="control-group"><label>펌프</label><input type="range" id="c-pump" min="0" max="100" value="0"><span id="v-pump">0%</span></div>
+                    <h4>솔레노이드 밸브</h4>
+                    <div class="valve-grid">
+                        <div class="control-group switch-group"><label>화분1</label><label class="switch"><input type="checkbox" id="c-v1"><span class="slider round"></span></label></div>
+                        <div class="control-group switch-group"><label>화분2</label><label class="switch"><input type="checkbox" id="c-v2"><span class="slider round"></span></label></div>
+                        <div class="control-group switch-group"><label>화분3</label><label class="switch"><input type="checkbox" id="c-v3"><span class="slider round"></span></label></div>
+                        <div class="control-group switch-group"><label>화분4</label><label class="switch"><input type="checkbox" id="c-v4"><span class="slider round"></span></label></div>
+                        <div class="control-group switch-group"><label>화분5</label><label class="switch"><input type="checkbox" id="c-v5"><span class="slider round"></span></label></div>
+                        <div class="control-group switch-group"><label>화분6</label><label class="switch"><input type="checkbox" id="c-v6"><span class="slider round"></span></label></div>
+                    </div>
+                    <div class="control-group switch-group mt-1"><label>포깅</label><label class="switch"><input type="checkbox" id="c-fog"><span class="slider round"></span></label></div>
+                </div>
+
+                <div class="glass-card">
+                    <h3>🪟 창문 · 스크린</h3>
+                    <div class="control-group radio-group">
+                        <label>창문1</label>
+                        <div class="radio-options">
+                            <input type="radio" name="win1" id="w1-close" value="close"><label for="w1-close">열기</label>
+                            <input type="radio" name="win1" id="w1-stop" value="stop" checked><label for="w1-stop">정지</label>
+                            <input type="radio" name="win1" id="w1-open" value="open"><label for="w1-open">닫기</label>
+                        </div>
+                    </div>
+                    <div class="control-group radio-group">
+                        <label>창문2</label>
+                        <div class="radio-options">
+                            <input type="radio" name="win2" id="w2-close" value="close"><label for="w2-close">열기</label>
+                            <input type="radio" name="win2" id="w2-stop" value="stop" checked><label for="w2-stop">정지</label>
+                            <input type="radio" name="win2" id="w2-open" value="open"><label for="w2-open">닫기</label>
+                        </div>
+                    </div>
+                    <div class="control-group radio-group">
+                        <label>차광스크린</label>
+                        <div class="radio-options">
+                            <input type="radio" name="scr" id="scr-open" value="open"><label for="scr-open">열기</label>
+                            <input type="radio" name="scr" id="scr-stop" value="stop" checked><label for="scr-stop">정지</label>
+                            <input type="radio" name="scr" id="scr-close" value="close"><label for="scr-close">닫기</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <h3>💡 LED 조명</h3>
+                    <div class="control-group"><label>RGB 색상</label><input type="color" id="c-color" value="#ffffff"></div>
+                    <div class="control-group"><label>밝기</label><input type="range" id="c-br" min="0" max="100" value="0"><span id="v-br">0%</span></div>
+                </div>
+            </div>
+            <div id="cmd-toast" class="toast">명령이 전송되었습니다.</div>
+        </section>
+
+        <!-- 3. Graph Tab -->
+        <section id="tab-graph" class="tab-content">
+            <div class="graph-controls glass-card">
+                <div class="input-group">
+                    <label>조회 범위 (분)</label>
+                    <input type="number" id="g-minutes" value="60" min="10" step="10">
+                </div>
+                <button id="btn-load-graph" class="primary-btn">조회</button>
+            </div>
+            <div class="chart-container glass-card">
+                <canvas id="envChart"></canvas>
+            </div>
+            <div class="chart-container glass-card mt-1">
+                <canvas id="soilChart"></canvas>
+            </div>
+        </section>
+
+        <!-- 4. Settings Tab -->
+        <section id="tab-settings" class="tab-content">
+            <div class="glass-card settings-card">
+                <h3>시스템 설정</h3>
+                <div class="control-group"><label>화면 업데이트 주기 (초)</label><input type="number" id="s-ui-ref" value="5"></div>
+                <div class="control-group"><label>센서 측정 주기 (초)</label><input type="number" id="s-meas" value="1"></div>
+                <div class="control-group"><label>Heartbeat 타임아웃 (초)</label><input type="number" id="s-hb" value="10"></div>
+                <button id="btn-save-settings" class="primary-btn mt-1">저장</button>
+                <div id="settings-toast" class="toast">저장되었습니다.</div>
+            </div>
+        </section>
+    </main>
+    <script src="app.js"></script>
+</body>
+</html>

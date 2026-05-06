@@ -17887,4 +17887,84 @@ stored sf/gh1/sensors/snapshot -> sensor_snapshot
 stored sf/gh1/sensors/snapshot -> sensor_snapshot
 stored sf/gh1/sensors/snapshot -> sensor_snapshot
 stored sf/gh1/actuators/heartbeat -> heartbeat
-stored sf/gh1/actuators/heartbeat -> heartbeat
+stored sf/gh1/actuators/heartbeat -> heartbeatTraceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Git\smartfarm\rpi\logger\mqtt_logger.py", line 227, in <module>
+    main()
+    ~~~~^^
+  File "C:\Git\smartfarm\rpi\logger\mqtt_logger.py", line 216, in main
+    client.connect(args.host, args.port, 60)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 1435, in connect
+    return self.reconnect()
+           ~~~~~~~~~~~~~~^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 1598, in reconnect
+    self._sock = self._create_socket()
+                 ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 4609, in _create_socket
+    sock = self._create_socket_connection()
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 4640, in _create_socket_connection
+    return socket.create_connection(addr, timeout=self._connect_timeout, source_address=source)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\xotn8\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 870, in create_connection
+    raise exceptions[0]
+  File "C:\Users\xotn8\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 855, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [WinError 10061] 대상 컴퓨터에서 연결을 거부했으므로 연결하지 못했습니다
+using monthly DB: data\smartfarm_2026_05.sqlite3
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Git\smartfarm\rpi\logger\mqtt_logger.py", line 227, in <module>
+    main()
+    ~~~~^^
+  File "C:\Git\smartfarm\rpi\logger\mqtt_logger.py", line 216, in main
+    client.connect(args.host, args.port, 60)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 1435, in connect
+    return self.reconnect()
+           ~~~~~~~~~~~~~~^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 1598, in reconnect
+    self._sock = self._create_socket()
+                 ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 4609, in _create_socket
+    sock = self._create_socket_connection()
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 4640, in _create_socket_connection
+    return socket.create_connection(addr, timeout=self._connect_timeout, source_address=source)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\xotn8\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 870, in create_connection
+    raise exceptions[0]
+  File "C:\Users\xotn8\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 855, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [WinError 10061] 대상 컴퓨터에서 연결을 거부했으므로 연결하지 못했습니다
+using monthly DB: data\smartfarm_2026_05.sqlite3
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Git\smartfarm\rpi\logger\mqtt_logger.py", line 227, in <module>
+    main()
+    ~~~~^^
+  File "C:\Git\smartfarm\rpi\logger\mqtt_logger.py", line 216, in main
+    client.connect(args.host, args.port, 60)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 1435, in connect
+    return self.reconnect()
+           ~~~~~~~~~~~~~~^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 1598, in reconnect
+    self._sock = self._create_socket()
+                 ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 4609, in _create_socket
+    sock = self._create_socket_connection()
+  File "C:\Git\smartfarm\.venv\Lib\site-packages\paho\mqtt\client.py", line 4640, in _create_socket_connection
+    return socket.create_connection(addr, timeout=self._connect_timeout, source_address=source)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\xotn8\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 870, in create_connection
+    raise exceptions[0]
+  File "C:\Users\xotn8\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 855, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [WinError 10061] 대상 컴퓨터에서 연결을 거부했으므로 연결하지 못했습니다
+using monthly DB: data\smartfarm_2026_05.sqlite3
