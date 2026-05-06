@@ -225,4 +225,3 @@ chromium-browser --kiosk http://127.0.0.1:8000
 - 설정 탭의 저장 관련 주기는 실제로는 sensor hub 측정/publish 주기임
 - UI는 화면만 담당하고 프로세스 실행/재시작은 supervisor/systemd가 담당
 - supervisor와 systemd service 파일의 구체적인 분리는 구현 단계에서 설계 필요
-- 새 FastAPI 진입점 파일명과 정적 파일 배치 확정 필요

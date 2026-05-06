@@ -30,9 +30,11 @@ smartfarm/
 ├─ rpi/
 │  ├─ README.md
 │  ├─ logger/
+│  ├─ sensor_hub/
 │  ├─ ui/
+│  │  ├─ server.py
+│  │  └─ static/
 │  ├─ tests/
-│  ├─ sensor_hub/          # planned
 │  ├─ weather_service/     # planned
 │  └─ supervisor/          # planned
 └─ arduino/
@@ -63,10 +65,10 @@ smartfarm/
 - 1280x800 기준 탭 UI 제공
 - **UI 구조: FastAPI backend + 정적 HTML/CSS/바닐라 JavaScript frontend**
 - 브라우저 전체 화면/kiosk 모드에서 사용
-- `app.py`: 초기 프로토타입 (Python HTTP 서버 + 인라인 HTML)
-- `app_v2.py`: Streamlit 기반 실험/이전 구현
-- `server.py`: FastAPI UI server 진입점 (예정)
-- `static/`: HTML/CSS/바닐라 JavaScript 정적 파일 위치 (예정)
+- `app.py`: 초기 프로토타입 (Python HTTP 서버 + 인라인 HTML, 레거시)
+- `app_v2.py`: Streamlit 기반 실험 (레거시)
+- `server.py`: FastAPI UI server 진입점
+- `static/`: HTML/CSS/바닐라 JavaScript 정적 파일 (`index.html`, `styles.css`, `app.js`)
 - 화면 표시와 사용자 입력 처리 담당
 - Python 서비스 실행은 UI가 직접 하지 않고 supervisor/systemd가 담당
 
@@ -86,12 +88,10 @@ MQTT 메시지를 받아 월별 SQLite DB에 저장하는 서비스 위치입니
 
 ### `rpi/sensor_hub/`
 
-ADS1115 센서값을 읽고 완성형 `sensor_snapshot` MQTT payload를 publish하는 코드 위치입니다.
+ADS1115 센서값을 읽고 완성형 `sensor_snapshot` MQTT payload를 publish하는 서비스입니다.
 
-상태:
-
-- planned
-- 기존 테스트 코드에서 sensor read/publish 실험 코드가 있음
+- `main.py`: 센서 읽기 및 MQTT 발행 루프
+- 실행: `python -m rpi.sensor_hub.main`
 
 ### `rpi/weather_service/`
 
@@ -163,11 +163,11 @@ Raspberry Pi boot
 
 초기 구현 단계:
 
-```text
-uvicorn rpi.ui.server:app --host 127.0.0.1 --port 8000
+```bash
+uvicorn rpi.ui.server:app --host 0.0.0.0 --port 8000
 python -m rpi.logger.mqtt_logger
-sensor_hub script
-weather_service script
+python -m rpi.sensor_hub.main
+# weather_service (planned)
 ```
 
 ## 6. 구조 설계 원칙
@@ -186,10 +186,8 @@ weather_service script
 - `platformio.ini`
 - `systemd/` 서비스 파일
 - `scripts/` 배포/실행 스크립트
-- `rpi/ui/server.py`
-- `rpi/ui/static/index.html`
-- `rpi/ui/static/app.js`
-- `rpi/ui/static/styles.css`
+- `rpi/sensor_hub/__init__.py`
+- `rpi/weather_service/` (planned)
 
 ## 8. 확인 필요
 

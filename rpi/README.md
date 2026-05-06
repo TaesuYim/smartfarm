@@ -25,7 +25,7 @@ UI는 화면 표시와 사용자 입력만 담당합니다. logger, sensor hub, 
 rpi/
 ├─ README.md
 ├─ requirements.txt
-├─ sensor_hub/          # planned
+├─ sensor_hub/
 ├─ logger/
 ├─ ui/
 ├─ weather_service/     # planned
@@ -91,7 +91,8 @@ MQTT 메시지를 받아 SQLite에 저장합니다.
 
 ```bash
 python -m rpi.logger.mqtt_logger --db-dir data
-uvicorn rpi.ui.server:app --host 127.0.0.1 --port 8000
+python -m rpi.sensor_hub.main
+uvicorn rpi.ui.server:app --host 0.0.0.0 --port 8000
 ```
 
 월별 DB 전환이 구현되면 UI와 logger 모두 같은 DB directory 설정을 사용해야 합니다.
@@ -106,7 +107,6 @@ chromium-browser --kiosk http://127.0.0.1:8000
 
 ## 6. 확인 필요
 
-- sensor hub 운영 파일 위치
 - weather service API 종류
 - supervisor/systemd service 파일 구조
 - 월을 넘는 그래프 조회 방식

@@ -79,7 +79,7 @@ smartfarm/
 ├─ rpi/
 │  ├─ README.md
 │  ├─ requirements.txt
-│  ├─ sensor_hub/          # planned
+│  ├─ sensor_hub/
 │  ├─ logger/
 │  ├─ ui/
 │  ├─ weather_service/     # planned
