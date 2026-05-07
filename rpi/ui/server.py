@@ -135,13 +135,29 @@ def get_history(minutes: int = 60):
 
 @app.get("/api/history/sensors")
 def get_sensor_history(start: str = None, end: str = None):
-    """Get sensor_snapshot data between start and end ISO timestamps."""
+    """Get sampled sensor_snapshot data to prevent UI lag."""
     if not start or not end:
         kst = timezone(timedelta(hours=9))
         end_dt = datetime.now(kst)
         start_dt = end_dt - timedelta(hours=1)
         start = start_dt.isoformat(timespec="seconds")
         end = end_dt.isoformat(timespec="seconds")
+
+    # 1. 전체 데이터 개수 확인
+    count_res = _q(
+        "SELECT COUNT(*) as cnt FROM sensor_snapshot WHERE greenhouse='gh1' AND ts>=? AND ts<=?",
+        (start, end), one=True
+    )
+    total_count = count_res['cnt'] if count_res else 0
+
+    # 2. 데이터가 1,000개를 넘으면 샘플링 (id % N == 0 방식 사용)
+    if total_count > 1000:
+        step = total_count // 1000
+        return _q(
+            f"SELECT * FROM sensor_snapshot WHERE greenhouse='gh1' AND ts>=? AND ts<=? AND (id % {step} = 0) ORDER BY ts",
+            (start, end)
+        )
+    
     return _q(
         "SELECT * FROM sensor_snapshot WHERE greenhouse='gh1' AND ts>=? AND ts<=? ORDER BY ts",
         (start, end)

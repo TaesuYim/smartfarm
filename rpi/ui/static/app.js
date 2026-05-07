@@ -269,9 +269,18 @@ document.querySelectorAll('#btn-send-cmd, .btn-send-group').forEach(btn => {
 document.getElementById('btn-query').addEventListener('click', loadGraphs);
 
 async function loadGraphs() {
+    const btn = document.getElementById('btn-query');
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = '조회 중...';
+
     const start = document.getElementById('g-start').value;
     const end = document.getElementById('g-end').value;
-    if (!start || !end) return;
+    if (!start || !end) {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        return;
+    }
 
     // datetime-local gives "YYYY-MM-DDTHH:MM" without seconds or timezone.
     // Append seconds and KST offset (+09:00) to match DB timestamps.
@@ -288,16 +297,17 @@ async function loadGraphs() {
         sensorData = await sRes.json();
         weatherData = await wRes.json();
     } catch (e) { console.error('Graph data fetch failed', e); }
+    finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
 
     Chart.defaults.color = '#64748b';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-    const noAnim = { animation: { duration: 0 } };
 
     // ── Environment + Weather chart (dual Y-axis) ──
     if (chartEnv) chartEnv.destroy();
-    const envLabels = sensorData.map(d => d.ts);
-    const weatherLabels = weatherData.map(d => d.ts);
-
+    
     chartEnv = new Chart(document.getElementById('chart-env'), {
         type: 'line',
         data: {
@@ -310,11 +320,26 @@ async function loadGraphs() {
             ]
         },
         options: {
-            ...noAnim,
+            animation: false,
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                x: { type: 'time', time: { tooltipFormat: 'MM-dd HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } } },
+                x: { 
+                    type: 'time', 
+                    time: { 
+                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss', 
+                        displayFormats: { 
+                            minute: 'HH:mm', 
+                            hour: 'HH:mm',
+                            day: 'MM/dd'
+                        } 
+                    },
+                    ticks: {
+                        autoSkip: true,
+                        maxRotation: 0,
+                        font: { size: 10 }
+                    }
+                },
                 y: { type: 'linear', position: 'left', title: { display: true, text: '온도(°C) / 습도(%)' } },
                 y1: { type: 'linear', position: 'right', title: { display: true, text: 'CO₂ (ppm)' }, grid: { drawOnChartArea: false } }
             },
@@ -335,10 +360,16 @@ async function loadGraphs() {
             }))
         },
         options: {
-            ...noAnim,
+            animation: false,
             responsive: true, maintainAspectRatio: false,
             scales: {
-                x: { type: 'time', time: { tooltipFormat: 'MM-dd HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } } },
+                x: { 
+                    type: 'time', 
+                    time: { 
+                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss', 
+                        displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } 
+                    } 
+                },
                 y: { title: { display: true, text: '토양수분 (%)' } }
             },
             plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } }
@@ -358,10 +389,16 @@ async function loadGraphs() {
             }]
         },
         options: {
-            ...noAnim,
+            animation: false,
             responsive: true, maintainAspectRatio: false,
             scales: {
-                x: { type: 'time', time: { tooltipFormat: 'MM-dd HH:mm', displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } } },
+                x: { 
+                    type: 'time', 
+                    time: { 
+                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss', 
+                        displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } 
+                    } 
+                },
                 y: { title: { display: true, text: 'PAR (W/m²)' } }
             },
             plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } }
