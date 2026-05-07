@@ -1,18 +1,4 @@
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "C:\Git\smartfarm\rpi\services\weather_service.py", line 5, in <module>
-    from dotenv import load_dotenv
-ModuleNotFoundError: No module named 'dotenv'
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "C:\Git\smartfarm\rpi\services\weather_service.py", line 5, in <module>
-    from dotenv import load_dotenv
-ModuleNotFoundError: No module named 'dotenv'
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "C:\Git\smartfarm\rpi\services\weather_service.py", line 5, in <module>
-    from dotenv import load_dotenv
-ModuleNotFoundError: No module named 'dotenv'
+nohup: ignoring input
+Starting Weather Service (Retry logic: 3 times / 1min)...
+[2026-05-07 15:18:01.726924] Weather updated: 2026-05-07T15:00:00+09:00
+Next update at 16:01:00 (Wait 2578s)

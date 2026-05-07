@@ -21,7 +21,7 @@
 - **Fan PWM Frequency**: `20kHz` (Arduino UNO R4 전용)
 - **DB Directory**: `data`
 - **Monthly DB Filename**: `smartfarm_YYYY_MM.sqlite3`
-- **KMA Weather Fetch**: 매시 `01`분에 정시 데이터 요청
+- **KMA Weather Fetch**: 매시 `01`분에 정시 데이터 요청 (실패 시 1분 간격 3회 재시도 후 비움)
 - **Node 2 LED Default Brightness**: `100%`
 
 ## 3. 관련 문서

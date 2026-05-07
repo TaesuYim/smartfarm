@@ -14,10 +14,6 @@
     <header class="app-header">
         <div class="header-brand">🌱 SFES Lab</div>
         <div class="header-clock" id="clock">0000-00-00 00:00:00</div>
-        <div class="header-nodes">
-            <div class="node-badge" id="node1-badge"><span class="node-dot" id="dot-node1"></span>Node 1</div>
-            <div class="node-badge" id="node2-badge"><span class="node-dot" id="dot-node2"></span>Node 2</div>
-        </div>
     </header>
 
     <!-- ══ Navigation ══ -->
@@ -47,12 +43,18 @@
                 </div>
                 <div class="card">
                     <div class="card-title">🔧 시스템</div>
+                    
                     <div class="ctrl-row" style="justify-content: flex-start; gap: 1rem; margin-top: 0.5rem;">
                         <span class="ctrl-label">아두이노 전원</span>
                         <label class="toggle">
                             <input type="checkbox" id="c-arduino-power" checked>
                             <span class="toggle-track"></span>
                         </label>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                        <div class="node-badge" id="node1-badge"><span class="node-dot" id="dot-node1"></span>Node 1</div>
+                        <div class="node-badge" id="node2-badge"><span class="node-dot" id="dot-node2"></span>Node 2</div>
                     </div>
                     <div class="status-msg" id="reset-msg" style="margin-top: 0.5rem;"></div>
                 </div>
@@ -66,19 +68,33 @@
                 <!-- 환기·난방 -->
                 <div class="card">
                     <div class="card-title">🌬️ 환기 · 난방</div>
-                    <div class="ctrl-row"><span class="ctrl-label">환기팬</span><input type="range" id="c-vent" min="0" max="100" value="0"><span class="ctrl-value" id="v-vent">0%</span></div>
-                    <div class="ctrl-row"><span class="ctrl-label">히터 1</span><input type="range" id="c-h1" min="0" max="100" value="0"><span class="ctrl-value" id="v-h1">0%</span></div>
-                    <div class="ctrl-row"><span class="ctrl-label">히터 2</span><input type="range" id="c-h2" min="0" max="100" value="0"><span class="ctrl-value" id="v-h2">0%</span></div>
-                    <div class="ctrl-row"><span class="ctrl-label">순환팬 1</span><input type="range" id="c-cf1" min="0" max="100" value="0"><span class="ctrl-value" id="v-cf1">0%</span></div>
-                    <div class="ctrl-row"><span class="ctrl-label">순환팬 2</span><input type="range" id="c-cf2" min="0" max="100" value="0"><span class="ctrl-value" id="v-cf2">0%</span></div>
-                    <div class="ctrl-row"><span class="ctrl-label">미스트</span><label class="toggle"><input type="checkbox" id="c-mist"><span class="toggle-track"></span></label></div>
+                    <div class="ctrl-row"><span class="ctrl-label">환기팬</span><input type="range" id="c-vent" min="0" max="100" value="0"><input type="number" id="v-vent" class="ctrl-num-input" min="0" max="100" value="0"></div>
+                    <div class="ctrl-row"><span class="ctrl-label">히터 1</span><input type="range" id="c-h1" min="0" max="100" value="0"><input type="number" id="v-h1" class="ctrl-num-input" min="0" max="100" value="0"></div>
+                    <div class="ctrl-row"><span class="ctrl-label">히터 2</span><input type="range" id="c-h2" min="0" max="100" value="0"><input type="number" id="v-h2" class="ctrl-num-input" min="0" max="100" value="0"></div>
+                    <div class="ctrl-row"><span class="ctrl-label">순환팬 1</span><input type="range" id="c-cf1" min="0" max="100" value="0"><input type="number" id="v-cf1" class="ctrl-num-input" min="0" max="100" value="0"></div>
+                    <div class="ctrl-row"><span class="ctrl-label">순환팬 2</span><input type="range" id="c-cf2" min="0" max="100" value="0"><input type="number" id="v-cf2" class="ctrl-num-input" min="0" max="100" value="0"></div>
+                    <div class="ctrl-row" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="ctrl-label">미스트</span>
+                            <label class="toggle"><input type="checkbox" id="c-mist"><span class="toggle-track"></span></label>
+                        </div>
+                        <button class="btn btn-primary" id="btn-send-cmd" type="button" style="padding: 0.4rem 1.2rem; font-size: 0.85rem;">전송</button>
+                    </div>
                 </div>
 
                 <!-- 관수 -->
                 <div class="card">
                     <div class="card-title">💧 관수</div>
-                    <div class="ctrl-row"><span class="ctrl-label">펌프</span><input type="range" id="c-pump" min="0" max="100" value="0"><span class="ctrl-value" id="v-pump">0%</span></div>
-                    <div class="card-sub">솔레노이드 밸브</div>
+                    <div class="ctrl-row" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; flex: 1;">
+                            <span class="ctrl-label">펌프</span>
+                            <input type="range" id="c-pump" min="0" max="100" value="0">
+                            <input type="number" id="v-pump" class="ctrl-num-input" min="0" max="100" value="0" style="margin-left: 0.5rem;">
+                        </div>
+                        <button class="btn btn-primary btn-send-group" type="button" style="padding: 0.4rem 1.2rem; font-size: 0.85rem; margin-left: 1.5rem;">전송</button>
+                    </div>
+                    
+                    <div class="card-sub" style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 0.8rem;">솔레노이드 밸브</div>
                     <div class="valve-grid">
                         <div class="ctrl-row"><span class="ctrl-label">화분 1</span><label class="toggle"><input type="checkbox" id="c-v1"><span class="toggle-track"></span></label></div>
                         <div class="ctrl-row"><span class="ctrl-label">화분 2</span><label class="toggle"><input type="checkbox" id="c-v2"><span class="toggle-track"></span></label></div>
@@ -86,8 +102,8 @@
                         <div class="ctrl-row"><span class="ctrl-label">화분 4</span><label class="toggle"><input type="checkbox" id="c-v4"><span class="toggle-track"></span></label></div>
                         <div class="ctrl-row"><span class="ctrl-label">화분 5</span><label class="toggle"><input type="checkbox" id="c-v5"><span class="toggle-track"></span></label></div>
                         <div class="ctrl-row"><span class="ctrl-label">화분 6</span><label class="toggle"><input type="checkbox" id="c-v6"><span class="toggle-track"></span></label></div>
+                        <div class="ctrl-row"><span class="ctrl-label">포깅</span><label class="toggle"><input type="checkbox" id="c-fog"><span class="toggle-track"></span></label></div>
                     </div>
-                    <div class="ctrl-row" style="margin-top:0.3rem"><span class="ctrl-label">포깅</span><label class="toggle"><input type="checkbox" id="c-fog"><span class="toggle-track"></span></label></div>
                 </div>
 
                 <!-- 창문·스크린 -->
@@ -122,8 +138,15 @@
                 <!-- LED -->
                 <div class="card">
                     <div class="card-title">💡 LED 조명</div>
-                    <div class="ctrl-row"><span class="ctrl-label">RGB 색상</span><input type="color" id="c-color" value="#ffffff"></div>
-                    <div class="ctrl-row"><span class="ctrl-label">밝기</span><input type="range" id="c-br" min="0" max="100" value="0"><span class="ctrl-value" id="v-br">0%</span></div>
+                    <div class="ctrl-row" style="margin-bottom: 0.5rem;"><span class="ctrl-label">RGB 색상</span><input type="color" id="c-color" value="#ffffff"></div>
+                    <div class="ctrl-row" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; flex: 1;">
+                            <span class="ctrl-label">밝기</span>
+                            <input type="range" id="c-br" min="0" max="100" value="0">
+                            <input type="number" id="v-br" class="ctrl-num-input" min="0" max="100" value="0" style="margin-left: 0.5rem;">
+                        </div>
+                        <button class="btn btn-primary btn-send-group" type="button" style="padding: 0.4rem 1.2rem; font-size: 0.85rem; margin-left: 1.5rem;">전송</button>
+                    </div>
                 </div>
             </div>
             <div class="toast" id="cmd-toast">명령이 전송되었습니다</div>

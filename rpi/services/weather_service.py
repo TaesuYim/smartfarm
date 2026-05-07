@@ -50,17 +50,36 @@ def parse_kma_response(text):
                 record[h] = values[i]
     return record
 
+def clear_weather_ui():
+    """데이터 획득 최종 실패 시 UI의 날씨 정보를 비웁니다."""
+    db_p = _db_path()
+    try:
+        with closing(sqlite3.connect(db_p)) as conn:
+            ui_data = {
+                "ta": None, "hm": None, "rn": None, "ws": None,
+                "icsr": None, "ss": None, "weather_ts": None,
+                "weather_fetched_at": None,
+                "updated_at": datetime.now(KST).isoformat(timespec="seconds")
+            }
+            set_clause = ", ".join([f"{k}=?" for k in ui_data.keys()])
+            sql_ui = f"UPDATE ui_latest SET {set_clause} WHERE greenhouse='gh1'"
+            conn.execute(sql_ui, list(ui_data.values()))
+            conn.commit()
+        print(f"[{datetime.now()}] Weather data cleared due to fetch failure.")
+    except Exception as e:
+        print(f"Error clearing weather UI: {e}")
+
 def fetch_and_save():
     auth_key = os.getenv("KMA_SERVICE_KEY")
     if not auth_key:
         print("Error: KMA_SERVICE_KEY not found in .env")
-        return
+        return False
 
-    # 광주 지점(156) 기준 시간 관측 데이터 조회
     now = datetime.now(KST)
-    # 기상청 ASOS 데이터는 보통 매시 10분 이후에 안정적으로 올라옴
     obs_time = now.replace(minute=0, second=0, microsecond=0)
-    if now.minute < 15:
+    
+    # 5분 이전에는 데이터가 생성 전일 확률이 높으므로 이전 시각 데이터로 시도 (필요시 정시 데이터 시도)
+    if now.minute < 5:
         obs_time -= timedelta(hours=1)
 
     params = {
@@ -77,10 +96,9 @@ def fetch_and_save():
         
         record = parse_kma_response(text)
         if not record:
-            print(f"[{datetime.now()}] No valid record found. Raw response snippet: {text[:100]}")
-            return
+            return False
 
-        # Mapping to DB (weather table)
+        # Mapping to DB
         data = {
             "greenhouse": "gh1",
             "ts": datetime.strptime(record["YYMMDDHHMI"], "%Y%m%d%H%M").replace(tzinfo=KST).isoformat(timespec="seconds"),
@@ -93,19 +111,18 @@ def fetch_and_save():
             "fetched_at": datetime.now(KST).isoformat(timespec="seconds")
         }
 
-        # Save to DB
         db_p = _db_path()
         if not db_p.exists():
             c = connect_db(db_p); init_db(c); c.close()
             
         with closing(sqlite3.connect(db_p)) as conn:
-            # 1. Save to weather history table
+            # 1. Save to history
             cols = ", ".join(data.keys())
             placeholders = ", ".join(["?"] * len(data))
             sql = f"INSERT OR REPLACE INTO weather ({cols}) VALUES ({placeholders})"
             conn.execute(sql, list(data.values()))
             
-            # 2. Update ui_latest for real-time dashboard
+            # 2. Update ui_latest
             ui_data = {
                 "ta": data["ta"], "hm": data["hm"], "rn": data["rn"], "ws": data["ws"],
                 "icsr": data["icsr"], "ss": data["ss"], "weather_ts": data["ts"],
@@ -115,20 +132,37 @@ def fetch_and_save():
             set_clause = ", ".join([f"{k}=?" for k in ui_data.keys()])
             sql_ui = f"UPDATE ui_latest SET {set_clause} WHERE greenhouse='gh1'"
             conn.execute(sql_ui, list(ui_data.values()))
-            
             conn.commit()
         
-        print(f"[{datetime.now()}] Weather data saved: {data['ts']}, Temp={data['ta']}")
+        print(f"[{datetime.now()}] Weather updated: {data['ts']}")
+        return True
 
     except Exception as e:
-        print(f"[{datetime.now()}] Error fetching weather: {e}")
+        print(f"[{datetime.now()}] Error fetching: {e}")
+        return False
 
 def main():
-    print("Starting Weather Service (KMA ASOS 156 - Gwangju)...")
-    interval = int(os.getenv("WEATHER_FETCH_INTERVAL_MIN", 60)) * 60
+    print("Starting Weather Service (Retry logic: 3 times / 1min)...")
     while True:
-        fetch_and_save()
-        time.sleep(interval)
+        now = datetime.now(KST)
+        next_run = (now + timedelta(hours=1)).replace(minute=1, second=0, microsecond=0)
+        
+        success = False
+        for i in range(3):
+            if fetch_and_save():
+                success = True
+                break
+            else:
+                print(f"[{datetime.now()}] Fetch failed. Retry {i+1}/3 in 60s...")
+                time.sleep(60)
+        
+        if not success:
+            clear_weather_ui()
+        
+        wait_sec = (next_run - datetime.now(KST)).total_seconds()
+        if wait_sec > 0:
+            print(f"Next update at {next_run.strftime('%H:%M:%S')} (Wait {int(wait_sec)}s)")
+            time.sleep(wait_sec)
 
 if __name__ == "__main__":
     main()

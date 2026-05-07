@@ -5,7 +5,8 @@ from pathlib import Path
 
 
 KST = timezone(timedelta(hours=9))
-DEFAULT_DB_DIR = "data"
+# DB 경로를 절대 경로로 고정
+DEFAULT_DB_DIR = "/home/pi/smartfarm/smartfarm/data"
 DB_FILENAME_PREFIX = "smartfarm"
 
 

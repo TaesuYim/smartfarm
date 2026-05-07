@@ -159,14 +159,14 @@ body {
 
 /* ─── Section Title ─── */
 .sec-title {
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     color: var(--text-dim);
-    margin-bottom: 0.75rem;
+    margin-bottom: 1.2rem; /* 1.5rem에서 원복 */
 }
-.sec-title:not(:first-child) { margin-top: 1.25rem; }
+.sec-title:not(:first-child) { margin-top: 2rem; /* 2.5rem에서 원복 */ }
 
 /* ─── Glass Card ─── */
 .card {
@@ -174,7 +174,7 @@ body {
     backdrop-filter: var(--glass);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 1rem;
+    padding: 2rem; /* 2.25rem에서 원복 */
     transition: var(--transition);
 }
 .card:hover { background: var(--bg-card-hover); }
@@ -194,7 +194,7 @@ body {
 /* ─── Metric Cards ─── */
 .metrics-grid {
     display: grid;
-    gap: 0.6rem;
+    gap: 1.5rem; /* 2rem에서 원복 */
 }
 .metrics-grid.env { grid-template-columns: repeat(6, 1fr); }
 .metrics-grid.soil { grid-template-columns: repeat(6, 1fr); }
@@ -202,8 +202,8 @@ body {
 .metric {
     background: rgba(255,255,255,0.02);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 0.7rem 0.5rem;
+    border-radius: 12px;
+    padding: 1.5rem 0.5rem; /* 1.75rem에서 원복 */
     text-align: center;
     transition: var(--transition);
 }
@@ -216,8 +216,8 @@ body {
 .monitor-bottom {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-top: 1rem;
+    gap: 1.5rem; /* 2rem에서 원복 */
+    margin-top: 2rem; /* 2.5rem에서 원복 */
 }
 .weather-grid {
     display: grid;
@@ -247,17 +247,39 @@ body {
 .ctrl-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    gap: 1.5rem; /* 1.75rem에서 원복 */
 }
 .ctrl-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.4rem 0;
+    padding: 0.7rem 0; /* 0.85rem에서 원복 */
 }
-.ctrl-row + .ctrl-row { border-top: 1px solid rgba(255,255,255,0.03); }
-.ctrl-label { font-size: 0.85rem; font-weight: 500; min-width: 70px; }
+.ctrl-label { 
+    font-size: 0.85rem; 
+    font-weight: 500; 
+    width: 100px; /* 고정 너비로 슬라이더 시작점 통일 */
+    flex-shrink: 0;
+}
 .ctrl-value { font-size: 0.85rem; font-weight: 700; color: var(--accent); min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Numeric Input for Sliders */
+.ctrl-num-input {
+    width: 55px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 3px 5px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+    font-family: inherit;
+    outline: none;
+    transition: var(--transition);
+}
+.ctrl-num-input:focus { border-color: var(--accent); background: rgba(56,189,248,0.05); }
+.ctrl-num-input::-webkit-inner-spin-button { display: none; }
 
 /* Range Slider */
 input[type="range"] {
@@ -273,7 +295,7 @@ input[type="range"] {
 }
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 20px; height: 20px;
+    width: 26px; height: 26px; /* 20px에서 26px로 터치 편의성 증대 */
     border-radius: 50%;
     background: var(--primary);
     box-shadow: 0 0 6px var(--primary-glow);
@@ -284,18 +306,18 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.25); }
 
 /* Toggle Switch */
-.toggle { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; }
+.toggle { position: relative; display: inline-block; width: 50px; height: 26px; flex-shrink: 0; }
 .toggle input { opacity: 0; width: 0; height: 0; }
 .toggle-track {
     position: absolute; cursor: pointer; inset: 0;
     background: rgba(255,255,255,0.08);
-    border-radius: 22px;
+    border-radius: 26px;
     transition: var(--transition);
 }
 .toggle-track::before {
     content: '';
     position: absolute;
-    width: 16px; height: 16px;
+    width: 20px; height: 20px;
     left: 3px; bottom: 3px;
     background: #fff;
     border-radius: 50%;
@@ -305,13 +327,22 @@ input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.25); }
     background: var(--primary);
     box-shadow: 0 0 10px var(--primary-glow);
 }
-.toggle input:checked + .toggle-track::before { transform: translateX(20px); }
+.toggle input:checked + .toggle-track::before { transform: translateX(24px); }
 
 /* Valve Grid */
 .valve-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.3rem 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+.valve-grid .ctrl-row {
+    justify-content: flex-start;
+    gap: 0.5rem; /* 간격을 더 좁힘 */
+}
+.valve-grid .ctrl-label {
+    width: 60px; /* 밸브와 포깅 레이블 폭을 통일하여 버튼 위치를 맞춤 */
+    min-width: 0;
+    flex-shrink: 0;
 }
 
 /* Radio Group (Window) */
@@ -324,8 +355,8 @@ input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.25); }
 }
 .radio-group input[type="radio"] { display: none; }
 .radio-group label {
-    padding: 5px 12px;
-    font-size: 0.8rem;
+    padding: 8px 16px; /* 패딩을 늘려 터치 영역 확대 */
+    font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
     border-radius: 4px;

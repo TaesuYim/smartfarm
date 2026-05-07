@@ -50,8 +50,8 @@
 필수 요소:
 
 - 최신 `ui_latest` 테이블에서 센서값 및 날씨 정보 표시
-- Arduino heartbeat 상태 표시
-- Arduino 리셋 버튼
+- 시스템 카드: Arduino 전원 스위치 및 하트비트(Heartbeat) 기반 노드(Node 1, 2) 활성 상태 통합 표시
+- Arduino 리셋 버튼 (시스템 카드 내 배치)
 
 현재 UI 구현 방향:
 
@@ -95,11 +95,11 @@ Arduino 전원 제어:
 
 - ON/OFF 제어는 toggle 사용
 - PWM 제어는 slider 사용
-- PWM 값은 숫자 입력으로도 조절 가능
+- PWM 값은 숫자 입력창(`input type="number"`)으로도 정밀 조절 가능하며, 슬라이더와 실시간 동기화됨
 - window 제어는 `open`, `close`, `stop` 선택 방식 사용
 - LED 제어가 포함될 경우 RGB와 brightness 입력 제공
-- 사용자가 slider/toggle/radio를 변경하면 즉시 MQTT command를 publish합니다.
-- 별도 "적용" 버튼을 기다리지 않는 즉시 반응형 제어 UX를 기본 정책으로 합니다.
+- **제어 그룹별 전송:** 환기·난방, 관수, LED 조명 각 카드마다 독립적인 [전송] 버튼을 제공하여 구역별 명령 발송 가능
+- **Dirty Flag 정책:** 사용자가 값을 변경 중(드래그 또는 타이핑)일 때는 서버의 자동 업데이트가 해당 값을 덮어쓰지 않도록 보호하며, [전송] 성공 시에만 최신 상태로 동기화함
 
 제어 대상 예시:
 
@@ -169,7 +169,7 @@ Arduino 전원 제어:
 sensor_hub -> MQTT -> logger -> monthly SQLite DB -> SFES Lab UI
 SFES Lab UI -> MQTT command -> Arduino control node
 Arduino control node -> MQTT state/heartbeat/RPM -> logger -> monthly SQLite DB
-weather_service -> KMA hourly fetch at HH:01 -> MQTT -> logger -> monthly SQLite DB -> SFES Lab UI
+weather_service -> KMA hourly fetch at HH:01 -> (Fail? Retry 3 times at 1min interval) -> (All Fail? Clear UI) -> SQLite DB -> SFES Lab UI
 ```
 
 supervisor/systemd가 함께 실행할 프로그램 후보:

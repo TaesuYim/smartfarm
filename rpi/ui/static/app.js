@@ -35,6 +35,13 @@ function showToast(id) {
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
 }
+const formatTime = (ts) => {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (isNaN(d)) return ts;
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
 
 // ═══════════════════════════════════════════════════════
 //  MONITORING TAB
@@ -91,11 +98,11 @@ function renderMonitoring(data) {
         `<div class="weather-item"><span class="wi-label">${w.label}</span><span class="wi-val">${w.val}</span></div>`
     ).join('');
     document.getElementById('weather-time').textContent =
-        L.weather_ts ? `날씨 업데이트: ${L.weather_ts}` : '';
+        L.weather_ts ? `날씨 업데이트: ${formatTime(L.weather_ts)}` : '';
 
     // ── Last update ──
     document.getElementById('last-update').textContent =
-        '마지막 업데이트: ' + (L.sensor_ts || '—');
+        '마지막 업데이트: ' + formatTime(L.sensor_ts);
 
     // ── Sync settings inputs (if user hasn't edited) ──
     const S = data.settings || {};
@@ -117,31 +124,27 @@ let updatingCtrl = false;
 
 function renderControls(data) {
     if (updatingCtrl) return;
-    // Only auto-sync when control tab is not active
-    const activeTab = document.querySelector('.tab-panel.active');
-    if (activeTab && activeTab.id === 'tab-control') return;
 
     updatingCtrl = true;
     const L = data.latest || {};
 
-    const setSlider = (id, val) => {
-        const el = document.getElementById(id);
-        if (el && !el.dataset.dragging) {
-            el.value = val || 0;
-            const vEl = document.getElementById(id.replace('c-', 'v-'));
-            if (vEl) vEl.textContent = (val || 0) + '%';
-        }
-    };
     const setToggle = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
     const setRadio = (name, val) => { const el = document.querySelector(`input[name="${name}"][value="${val || 'stop'}"]`); if (el) el.checked = true; };
+    const setVal = (id, val) => {
+        const slider = document.getElementById('c-' + id);
+        const num = document.getElementById('v-' + id);
+        // 사용자가 수정 중(dirty)이거나 드래그 중이면 서버 값으로 덮어쓰지 않음
+        if (slider && !slider.dataset.dragging && !slider.dataset.dirty) slider.value = val || 0;
+        if (num && !num.dataset.dirty) num.value = val || 0;
+    };
 
-    setSlider('c-vent', L.vent_fan_pwm_pct);
-    setSlider('c-h1', L.heater_1_pwm_pct);
-    setSlider('c-h2', L.heater_2_pwm_pct);
-    setSlider('c-cf1', L.circ_fan_1_pwm_pct);
-    setSlider('c-cf2', L.circ_fan_2_pwm_pct);
-    setSlider('c-pump', L.pump_pwm_pct);
-    setSlider('c-br', L.led_brightness_pct);
+    setVal('vent', L.vent_fan_pwm_pct);
+    setVal('h1', L.heater_1_pwm_pct);
+    setVal('h2', L.heater_2_pwm_pct);
+    setVal('cf1', L.circ_fan_1_pwm_pct);
+    setVal('cf2', L.circ_fan_2_pwm_pct);
+    setVal('pump', L.pump_pwm_pct);
+    setVal('br', L.led_brightness_pct);
 
     setToggle('c-mist', L.mist_on);
     for (let i = 1; i <= 6; i++) setToggle('c-v' + i, L['valve_pot_' + i + '_on']);
@@ -195,6 +198,8 @@ async function sendCommand() {
             body: JSON.stringify({ cmds: gatherCmds() })
         });
         showToast('cmd-toast');
+        // 전송 성공 시 모든 dirty 플래그 해제 (이제 서버 값이 최신이므로 덮어써도 됨)
+        document.querySelectorAll('#tab-control input').forEach(el => delete el.dataset.dirty);
     } catch (e) { console.error('Command send failed', e); }
 }
 
@@ -204,22 +209,45 @@ function debounceCmd() {
     cmdTimer = setTimeout(sendCommand, 300);
 }
 
-// Bind sliders
+// Bind sliders and numeric inputs
 document.querySelectorAll('#tab-control input[type="range"]').forEach(el => {
     el.addEventListener('input', e => {
         e.target.dataset.dragging = '1';
-        const vEl = document.getElementById(e.target.id.replace('c-', 'v-'));
-        if (vEl) vEl.textContent = e.target.value + '%';
+        e.target.dataset.dirty = '1';
+        const numEl = document.getElementById(e.target.id.replace('c-', 'v-'));
+        if (numEl) {
+            numEl.value = e.target.value;
+            numEl.dataset.dirty = '1';
+        }
     });
     el.addEventListener('change', e => {
         delete e.target.dataset.dragging;
-        debounceCmd();
     });
 });
 
-// Bind toggles, radios, color
+document.querySelectorAll('.ctrl-num-input').forEach(el => {
+    el.addEventListener('input', e => {
+        e.target.dataset.dirty = '1';
+        const sliderEl = document.getElementById(e.target.id.replace('v-', 'c-'));
+        if (sliderEl) {
+            sliderEl.value = e.target.value;
+            sliderEl.dataset.dirty = '1';
+        }
+    });
+});
+
+// Bind toggles, radios, color (이것들은 누르자마자 즉시 전송되게 복구)
 document.querySelectorAll('#tab-control input[type="checkbox"], #tab-control input[type="radio"], #tab-control input[type="color"]').forEach(el => {
-    el.addEventListener('change', sendCommand);
+    el.addEventListener('change', e => {
+        // 즉시 전송되는 항목들도 dirty 플래그를 일시적으로 주어 렌더링 충돌 방지
+        e.target.dataset.dirty = '1';
+        sendCommand();
+    });
+});
+
+// Bind send buttons (모든 전송 버튼들에 연결)
+document.querySelectorAll('#btn-send-cmd, .btn-send-group').forEach(btn => {
+    btn.addEventListener('click', sendCommand);
 });
 
 // ═══════════════════════════════════════════════════════
@@ -462,5 +490,5 @@ async function runInitialCalibration() {
 }
 
 // Start everything
-runInitialCalibration();
-startLoop();
+startLoop(); // 데이터 루프부터 즉시 시작
+runInitialCalibration(); 
