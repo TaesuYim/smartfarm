@@ -47,10 +47,9 @@ TEMP_OFFSET = 0.0
 HUM_OFFSET  = 0.0
 CO2_OFFSET  = 0.0
 
-# Field calibration: reference meter reads 25.4% while the default mapping
-# reports about 24.0%. Scale humidity instead of adding a flat offset so
-# near-zero readings still stay near zero.
-HUM_SCALE = 25.4 / 24.0
+# Keep global humidity scaling neutral. A one-point scale can make already
+# correct readings drift high; use HUMIDITY_CAL_POINTS for real calibration.
+HUM_SCALE = 1.0
 
 HUM_V_MIN = 0.655
 HUM_V_SPAN = 2.634
