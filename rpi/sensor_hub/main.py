@@ -97,9 +97,9 @@ def voltage_to_hum_pct(voltage, key=None):
     return round(clamp_pct((val * HUM_SCALE) + HUM_OFFSET), 2)
 
 def voltage_to_co2_ppm(voltage):
-    """0.666V=0ppm, 3.3V=5000ppm 변환"""
+    """0.666V=0ppm, 3.3V=2000ppm 변환"""
     v_adj = max(0, voltage - 0.666)
-    val = v_adj * (5000 / 2.634)
+    val = v_adj * (2000 / 2.634)
     return round(max(0, val + CO2_OFFSET), 1)
 
 def voltage_to_par_w_m2(voltage):
