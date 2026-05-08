@@ -58,13 +58,12 @@ const formatTime = (ts) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-const formatGraphTime = (ts, includeSeconds = false) => {
+const formatGraphTime = (ts) => {
     if (!ts) return '—';
     const d = new Date(ts);
-    if (isNaN(d)) return String(ts).slice(11, includeSeconds ? 19 : 16) || ts;
+    if (isNaN(d)) return String(ts).slice(11, 16) || ts;
     const pad = n => String(n).padStart(2, '0');
-    const hhmm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    return includeSeconds ? `${hhmm}:${pad(d.getSeconds())}` : hhmm;
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 // ═══════════════════════════════════════════════════════
@@ -330,8 +329,7 @@ async function loadGraphs() {
 
     Chart.defaults.color = '#64748b';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-    const useSeconds = sensorData.length > 120 || weatherData.length > 120;
-    const graphPoint = (d, key) => ({ x: formatGraphTime(d.ts, useSeconds), y: d[key] });
+    const graphPoint = (d, key) => ({ x: formatGraphTime(d.ts), y: d[key] });
 
     // ── Environment + Weather chart (dual Y-axis) ──
     if (chartEnv) chartEnv.destroy();
