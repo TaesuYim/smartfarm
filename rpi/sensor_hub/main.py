@@ -47,18 +47,50 @@ TEMP_OFFSET = 0.0
 HUM_OFFSET  = 0.0
 CO2_OFFSET  = 0.0
 
+HUM_V_MIN = 0.655
+HUM_V_SPAN = 2.634
+HUM_PCT_MIN = 0.0
+HUM_PCT_MAX = 99.9
+
+# Optional two-point humidity calibration, per channel.
+# Leave empty to use the default datasheet-style voltage mapping above.
+# Example:
+# HUMIDITY_CAL_POINTS = {
+#     "hum_pot": ((1.42, 45.0), (1.80, 60.0)),
+#     "hum_top": ((1.40, 45.0), (1.78, 60.0)),
+# }
+HUMIDITY_CAL_POINTS = {}
+
+def clamp_pct(value):
+    return max(0, min(100, value))
+
+def interpolate_two_point(voltage, low_point, high_point):
+    v1, y1 = low_point
+    v2, y2 = high_point
+    if v1 == v2:
+        return y1
+    slope = (y2 - y1) / (v2 - v1)
+    return y1 + (voltage - v1) * slope
+
 def voltage_to_temp_c(voltage):
     """0.686V=-19.9C, 3.3V=60C 변환 (0.6도 하향 보정을 위해 기준 전압을 0.666V에서 0.686V로 상향 조정)"""
     v_adj = max(0, voltage - 0.686)
     val = (v_adj * (79.9 / 2.634)) - 19.9
     return round(val + TEMP_OFFSET, 2)
 
-def voltage_to_hum_pct(voltage):
+def voltage_to_hum_pct(voltage, key=None):
     """0.655V=0%, 3.3V=100% 변환 (0.665V에서 0.4% 낮게 측정되어 0.655V로 미세 조정)"""
-    v_adj = max(0, voltage - 0.655)
-    val = v_adj * (99.9 / 2.634)
-    # 습도는 0~100% 사이로 제한
-    return round(max(0, min(100, val + HUM_OFFSET)), 2)
+    cal_points = HUMIDITY_CAL_POINTS.get(key)
+    if cal_points:
+        val = interpolate_two_point(voltage, cal_points[0], cal_points[1])
+    else:
+        val = interpolate_two_point(
+            voltage,
+            (HUM_V_MIN, HUM_PCT_MIN),
+            (HUM_V_MIN + HUM_V_SPAN, HUM_PCT_MAX),
+        )
+
+    return round(clamp_pct(val + HUM_OFFSET), 2)
 
 def voltage_to_co2_ppm(voltage):
     """0.666V=0ppm, 3.3V=5000ppm 변환"""
@@ -105,9 +137,19 @@ def try_init_ads(i2c, address):
         return None, []
 
 
-# 각 채널별 마지막 정상 값과 슬라이딩 윈도우 버퍼
-HISTORY_BUFFERS = {}
-EMA_VALUES = {}
+# Fast but stable filtering:
+# - read fewer ADS samples per channel for lower latency
+# - reject one-cycle spikes against the recent channel median
+# - accept repeated large moves quickly so real changes are not over-smoothed
+SAMPLE_COUNT = 7
+SAMPLE_DELAY_SEC = 0.002
+SETTLE_DELAY_SEC = 0.003
+HISTORY_SIZE = 5
+OUTLIER_ACCEPT_COUNT = 2
+SLOW_ALPHA = 0.55
+FAST_ALPHA = 0.85
+
+FILTER_STATE = {}
 
 # DB 설정값 캐싱을 위한 전역 변수
 _cached_period = None
@@ -162,54 +204,69 @@ def read_snapshot(ch_4b, ch_49, ch_48):
     """
     def safe_read(channels, idx, convert_fn, key, threshold):
         try:
-            # 채널 전환 후 전압 안정화
+            # 채널 전환 후 짧게 안정화
             _ = channels[idx].voltage
-            time.sleep(0.01)
+            time.sleep(SETTLE_DELAY_SEC)
 
-            # 15번 읽어서 하드웨어 중간값 취함 (노이즈 상쇄를 위한 충분한 샘플 수)
             samples = []
-            for _ in range(15):
+            for _ in range(SAMPLE_COUNT):
                 v = channels[idx].voltage
                 if v > 0.005:
                     samples.append(v)
-                time.sleep(0.005)
+                time.sleep(SAMPLE_DELAY_SEC)
 
             if not samples:
                 return None
                 
-            # --- 상위 절사 평균 (Upper-Trimmed Mean) 필터 ---
-            # 전압 강하(뚝 떨어지는) 노이즈가 많으므로 하위 50%를 버리고, 
-            # 위로 튀는 최상위 값 1~2개도 버린 후 '상위권 안정값'들의 평균을 구함
+            # 전압 강하 노이즈가 잦아 하위 절반은 버리고, 최상위 1개도 버립니다.
             samples.sort()
             n = len(samples)
             if n >= 5:
-                # 예: 15개 샘플이면 하위 7개 버림, 최상위 2개 버림 -> 8번째 ~ 13번째 값의 평균
-                valid_samples = samples[n//2 : n - (n//8 + 1)]
+                valid_samples = samples[n // 2 : n - 1]
                 filtered_v = statistics.mean(valid_samples) if valid_samples else statistics.median(samples)
             else:
                 filtered_v = statistics.median(samples)
                 
-            current_val = convert_fn(filtered_v)
-            
-            # --- 강력한 슬라이딩 윈도우 최댓값 필터 (값 갇힘 현상 원천 차단) ---
-            if key not in HISTORY_BUFFERS:
-                # 2Hz 기준 10개 = 5초 분량의 데이터 유지
-                HISTORY_BUFFERS[key] = collections.deque(maxlen=10)
-                
-            HISTORY_BUFFERS[key].append(current_val)
-            
-            # 최근 5초간의 데이터 중 중간값을 선택 (자연스러운 노이즈의 중심값)
-            window_median = statistics.median(HISTORY_BUFFERS[key])
-            
-            # --- 부드러운 UI 표시를 위한 가벼운 EMA ---
-            alpha = 0.5
-            last_ema = EMA_VALUES.get(key)
-            if last_ema is not None:
-                smoothed_val = (alpha * window_median) + ((1 - alpha) * last_ema)
-            else:
-                smoothed_val = window_median
-                
-            EMA_VALUES[key] = smoothed_val
+            current_val = convert_fn(filtered_v, key) if convert_fn is voltage_to_hum_pct else convert_fn(filtered_v)
+
+            state = FILTER_STATE.setdefault(key, {
+                "history": collections.deque(maxlen=HISTORY_SIZE),
+                "ema": None,
+                "pending_direction": 0,
+                "pending_count": 0,
+            })
+            history = state["history"]
+
+            input_val = current_val
+            alpha = FAST_ALPHA
+            if history:
+                baseline = statistics.median(history)
+                delta = current_val - baseline
+                direction = 1 if delta > 0 else -1
+
+                if threshold and abs(delta) > threshold:
+                    if direction == state["pending_direction"]:
+                        state["pending_count"] += 1
+                    else:
+                        state["pending_direction"] = direction
+                        state["pending_count"] = 1
+
+                    if state["pending_count"] < OUTLIER_ACCEPT_COUNT:
+                        input_val = baseline
+                        alpha = SLOW_ALPHA
+                    else:
+                        state["pending_count"] = 0
+                        state["pending_direction"] = 0
+                        alpha = FAST_ALPHA
+                else:
+                    state["pending_count"] = 0
+                    state["pending_direction"] = 0
+                    alpha = FAST_ALPHA if abs(delta) > (threshold * 0.35) else SLOW_ALPHA
+
+            last_ema = state["ema"]
+            smoothed_val = input_val if last_ema is None else (alpha * input_val) + ((1 - alpha) * last_ema)
+            state["ema"] = smoothed_val
+            history.append(smoothed_val)
             return round(smoothed_val, 2)
         except Exception:
             return None
