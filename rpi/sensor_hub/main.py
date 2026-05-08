@@ -109,28 +109,40 @@ def try_init_ads(i2c, address):
 HISTORY_BUFFERS = {}
 EMA_VALUES = {}
 
+# DB 설정값 캐싱을 위한 전역 변수
+_cached_period = None
+_last_db_check = 0
+
 def read_measurement_period_seconds(default_period):
+    global _cached_period, _last_db_check
+    now = time.time()
+    
+    # 5초 이내라면 저장된 캐시값을 사용 (DB 부하 감소)
+    if _cached_period is not None and (now - _last_db_check) < 5.0:
+        return _cached_period
+
+    _last_db_check = now
     db_path = monthly_db_path(DEFAULT_DB_DIR)
     if not db_path.exists():
+        _cached_period = default_period
         return default_period
 
     try:
         with connect_db(db_path) as conn:
-            init_db(conn)
+            # Note: init_db는 main() 시작 시 한 번만 수행하도록 변경함
             row = conn.execute(
                 "SELECT value FROM app_setting WHERE key = ?",
                 ("measurement_interval_sec",),
             ).fetchone()
+            
+            if row:
+                _cached_period = max(0.1, float(row["value"]))
+            else:
+                _cached_period = default_period
     except Exception:
-        return default_period
-
-    if not row:
-        return default_period
-
-    try:
-        return max(0.1, float(row["value"]))
-    except (TypeError, ValueError):
-        return default_period
+        _cached_period = default_period
+        
+    return _cached_period
 
 def read_snapshot(ch_4b, ch_49, ch_48):
     """
@@ -244,6 +256,15 @@ def main():
     except Exception as e:
         print(f"MQTT 연결 실패: {e}")
         return
+
+    # 데이터베이스 초기화 (프로그램 시작 시 한 번만)
+    try:
+        db_path = monthly_db_path(DEFAULT_DB_DIR)
+        with connect_db(db_path) as conn:
+            init_db(conn)
+        print(f"데이터베이스 초기화 완료: {db_path.name}")
+    except Exception as e:
+        print(f"데이터베이스 초기화 실패 (DB 파일이 아직 없을 수 있음): {e}")
 
     # I2C 및 ADS1115 초기화
     ads_4b, ch_4b = None, []
