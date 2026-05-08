@@ -58,6 +58,15 @@ const formatTime = (ts) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
+const formatGraphTime = (ts, includeSeconds = false) => {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (isNaN(d)) return String(ts).slice(11, includeSeconds ? 19 : 16) || ts;
+    const pad = n => String(n).padStart(2, '0');
+    const hhmm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return includeSeconds ? `${hhmm}:${pad(d.getSeconds())}` : hhmm;
+};
+
 // ═══════════════════════════════════════════════════════
 //  MONITORING TAB
 // ═══════════════════════════════════════════════════════
@@ -321,6 +330,8 @@ async function loadGraphs() {
 
     Chart.defaults.color = '#64748b';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+    const useSeconds = sensorData.length > 120 || weatherData.length > 120;
+    const graphPoint = (d, key) => ({ x: formatGraphTime(d.ts, useSeconds), y: d[key] });
 
     // ── Environment + Weather chart (dual Y-axis) ──
     if (chartEnv) chartEnv.destroy();
@@ -329,11 +340,11 @@ async function loadGraphs() {
         type: 'line',
         data: {
             datasets: [
-                { label: '내부 온도 (°C)', data: sensorData.map(d => ({ x: d.ts, y: d.temp_pot_c })), borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y' },
-                { label: '내부 습도 (%)', data: sensorData.map(d => ({ x: d.ts, y: d.hum_pot_pct })), borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y' },
-                { label: '외기 온도 (°C)', data: weatherData.map(d => ({ x: d.ts, y: d.ta })), borderColor: '#f97316', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0, tension: 0.3, yAxisID: 'y' },
-                { label: '외기 습도 (%)', data: weatherData.map(d => ({ x: d.ts, y: d.hm })), borderColor: '#06b6d4', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0, tension: 0.3, yAxisID: 'y' },
-                { label: 'CO₂ (ppm)', data: sensorData.map(d => ({ x: d.ts, y: d.co2_ppm })), borderColor: '#a855f7', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y1' },
+                { label: '내부 온도 (°C)', data: sensorData.map(d => graphPoint(d, 'temp_pot_c')), borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: '내부 습도 (%)', data: sensorData.map(d => graphPoint(d, 'hum_pot_pct')), borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: '외기 온도 (°C)', data: weatherData.map(d => graphPoint(d, 'ta')), borderColor: '#f97316', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: '외기 습도 (%)', data: weatherData.map(d => graphPoint(d, 'hm')), borderColor: '#06b6d4', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0, tension: 0.3, yAxisID: 'y' },
+                { label: 'CO₂ (ppm)', data: sensorData.map(d => graphPoint(d, 'co2_ppm')), borderColor: '#a855f7', borderWidth: 1.5, pointRadius: 0, tension: 0.3, yAxisID: 'y1' },
             ]
         },
         options: {
@@ -364,7 +375,7 @@ async function loadGraphs() {
         data: {
             datasets: [1, 2, 3, 4, 5, 6].map((i, idx) => ({
                 label: `토양 ${i}`,
-                data: sensorData.map(d => ({ x: d.ts, y: d['soil_moisture_' + i + '_pct'] })),
+                data: sensorData.map(d => graphPoint(d, 'soil_moisture_' + i + '_pct')),
                 borderColor: soilColors[idx], borderWidth: 1.5, pointRadius: 0, tension: 0.3
             }))
         },
@@ -386,7 +397,7 @@ async function loadGraphs() {
         data: {
             datasets: [{
                 label: 'PAR (W/m²)',
-                data: sensorData.map(d => ({ x: d.ts, y: d.par_w_m2 })),
+                data: sensorData.map(d => graphPoint(d, 'par_w_m2')),
                 borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.08)',
                 borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true
             }]
