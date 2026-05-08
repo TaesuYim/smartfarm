@@ -154,6 +154,73 @@ SLOW_ALPHA = 0.55
 FAST_ALPHA = 0.85
 
 FILTER_STATE = {}
+LAST_STABLE_SNAPSHOT = None
+
+SNAPSHOT_SPIKE_THRESHOLDS = {
+    "temp_pot_c": 1.0,
+    "hum_pot_pct": 2.0,
+    "temp_top_c": 1.0,
+    "hum_top_pct": 2.0,
+    "co2_ppm": 200.0,
+    "par_w_m2": 0.5,
+}
+
+SNAPSHOT_SPIKE_COUNT = 3
+
+SNAPSHOT_KEY_TO_FILTER_KEY = {
+    "temp_pot_c": "temp_pot",
+    "hum_pot_pct": "hum_pot",
+    "temp_top_c": "temp_top",
+    "hum_top_pct": "hum_top",
+    "co2_ppm": "co2",
+    "par_w_m2": "par",
+    "soil_moisture_1_pct": "sm1",
+    "soil_moisture_2_pct": "sm2",
+    "soil_moisture_3_pct": "sm3",
+    "soil_moisture_4_pct": "sm4",
+    "soil_moisture_5_pct": "sm5",
+    "soil_moisture_6_pct": "sm6",
+}
+
+def reset_filter_to_value(filter_key, value):
+    state = FILTER_STATE.get(filter_key)
+    if not state or value is None:
+        return
+    state["history"].clear()
+    state["history"].append(value)
+    state["ema"] = value
+    state["pending_direction"] = 0
+    state["pending_count"] = 0
+
+def reject_snapshot_spike(snapshot):
+    global LAST_STABLE_SNAPSHOT
+
+    if LAST_STABLE_SNAPSHOT is None:
+        LAST_STABLE_SNAPSHOT = dict(snapshot)
+        return snapshot
+
+    spike_keys = []
+    for key, threshold in SNAPSHOT_SPIKE_THRESHOLDS.items():
+        current = snapshot.get(key)
+        stable = LAST_STABLE_SNAPSHOT.get(key)
+        if current is None or stable is None:
+            continue
+        if abs(current - stable) > threshold:
+            spike_keys.append(key)
+
+    if len(spike_keys) >= SNAPSHOT_SPIKE_COUNT:
+        print(f"Rejected correlated sensor spike: {', '.join(spike_keys)}")
+        clean_snapshot = dict(snapshot)
+        for key, stable in LAST_STABLE_SNAPSHOT.items():
+            if stable is not None:
+                clean_snapshot[key] = stable
+                filter_key = SNAPSHOT_KEY_TO_FILTER_KEY.get(key)
+                if filter_key:
+                    reset_filter_to_value(filter_key, stable)
+        return clean_snapshot
+
+    LAST_STABLE_SNAPSHOT = dict(snapshot)
+    return snapshot
 
 def read_measurement_period_seconds(default_period):
     db_path = monthly_db_path(DEFAULT_DB_DIR)
@@ -263,7 +330,7 @@ def read_snapshot(ch_4b, ch_49, ch_48):
         except Exception:
             return None
 
-    return {
+    snapshot = {
         "temp_pot_c":          safe_read(ch_4b, 0, voltage_to_temp_c, "temp_pot", 5.0)       if ch_4b else None,
         "hum_pot_pct":         safe_read(ch_4b, 1, voltage_to_hum_pct, "hum_pot", 10.0)      if ch_4b else None,
         "temp_top_c":          safe_read(ch_4b, 2, voltage_to_temp_c, "temp_top", 5.0)       if ch_4b else None,
@@ -277,6 +344,7 @@ def read_snapshot(ch_4b, ch_49, ch_48):
         "soil_moisture_5_pct": safe_read(ch_48, 2, voltage_to_soil_moisture_pct, "sm5", 10.0) if ch_48 else None,
         "soil_moisture_6_pct": safe_read(ch_48, 3, voltage_to_soil_moisture_pct, "sm6", 10.0) if ch_48 else None,
     }
+    return reject_snapshot_spike(snapshot)
 
 
 def main():
