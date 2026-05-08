@@ -47,18 +47,50 @@ TEMP_OFFSET = 0.0
 HUM_OFFSET  = 0.0
 CO2_OFFSET  = 0.0
 
+HUM_V_MIN = 0.655
+HUM_V_SPAN = 2.634
+HUM_PCT_MIN = 0.0
+HUM_PCT_MAX = 99.9
+
+# Optional two-point humidity calibration, per channel.
+# Leave empty to use the default datasheet-style voltage mapping above.
+# Example:
+# HUMIDITY_CAL_POINTS = {
+#     "hum_pot": ((1.42, 45.0), (1.80, 60.0)),
+#     "hum_top": ((1.40, 45.0), (1.78, 60.0)),
+# }
+HUMIDITY_CAL_POINTS = {}
+
+def clamp_pct(value):
+    return max(0, min(100, value))
+
+def interpolate_two_point(voltage, low_point, high_point):
+    v1, y1 = low_point
+    v2, y2 = high_point
+    if v1 == v2:
+        return y1
+    slope = (y2 - y1) / (v2 - v1)
+    return y1 + (voltage - v1) * slope
+
 def voltage_to_temp_c(voltage):
     """0.686V=-19.9C, 3.3V=60C 변환 (0.6도 하향 보정을 위해 기준 전압을 0.666V에서 0.686V로 상향 조정)"""
     v_adj = max(0, voltage - 0.686)
     val = (v_adj * (79.9 / 2.634)) - 19.9
     return round(val + TEMP_OFFSET, 2)
 
-def voltage_to_hum_pct(voltage):
+def voltage_to_hum_pct(voltage, key=None):
     """0.655V=0%, 3.3V=100% 변환 (0.665V에서 0.4% 낮게 측정되어 0.655V로 미세 조정)"""
-    v_adj = max(0, voltage - 0.655)
-    val = v_adj * (99.9 / 2.634)
-    # 습도는 0~100% 사이로 제한
-    return round(max(0, min(100, val + HUM_OFFSET)), 2)
+    cal_points = HUMIDITY_CAL_POINTS.get(key)
+    if cal_points:
+        val = interpolate_two_point(voltage, cal_points[0], cal_points[1])
+    else:
+        val = interpolate_two_point(
+            voltage,
+            (HUM_V_MIN, HUM_PCT_MIN),
+            (HUM_V_MIN + HUM_V_SPAN, HUM_PCT_MAX),
+        )
+
+    return round(clamp_pct(val + HUM_OFFSET), 2)
 
 def voltage_to_co2_ppm(voltage):
     """0.666V=0ppm, 3.3V=5000ppm 변환"""
@@ -183,7 +215,7 @@ def read_snapshot(ch_4b, ch_49, ch_48):
             else:
                 filtered_v = statistics.median(samples)
                 
-            current_val = convert_fn(filtered_v)
+            current_val = convert_fn(filtered_v, key) if convert_fn is voltage_to_hum_pct else convert_fn(filtered_v)
 
             state = FILTER_STATE.setdefault(key, {
                 "history": collections.deque(maxlen=HISTORY_SIZE),
