@@ -47,6 +47,11 @@ TEMP_OFFSET = 0.0
 HUM_OFFSET  = 0.0
 CO2_OFFSET  = 0.0
 
+# Field calibration: reference meter reads 25.4% while the default mapping
+# reports about 24.0%. Scale humidity instead of adding a flat offset so
+# near-zero readings still stay near zero.
+HUM_SCALE = 25.4 / 24.0
+
 HUM_V_MIN = 0.655
 HUM_V_SPAN = 2.634
 HUM_PCT_MIN = 0.0
@@ -90,7 +95,7 @@ def voltage_to_hum_pct(voltage, key=None):
             (HUM_V_MIN + HUM_V_SPAN, HUM_PCT_MAX),
         )
 
-    return round(clamp_pct(val + HUM_OFFSET), 2)
+    return round(clamp_pct((val * HUM_SCALE) + HUM_OFFSET), 2)
 
 def voltage_to_co2_ppm(voltage):
     """0.666V=0ppm, 3.3V=5000ppm 변환"""
