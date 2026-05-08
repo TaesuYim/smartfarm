@@ -150,6 +150,7 @@ SAMPLE_DELAY_SEC = 0.005
 SETTLE_DELAY_SEC = 0.01
 HISTORY_SIZE = 5
 EMA_ALPHA = 0.8
+HUMIDITY_MAX_STEP_PCT = 6.0
 
 FILTER_STATE = {}
 
@@ -236,10 +237,16 @@ def read_snapshot(ch_4b, ch_49, ch_48):
                 "ema": None,
             })
             history = state["history"]
+            last_ema = state["ema"]
+
+            if key in ("hum_pot", "hum_top") and last_ema is not None:
+                min_allowed = last_ema - HUMIDITY_MAX_STEP_PCT
+                max_allowed = last_ema + HUMIDITY_MAX_STEP_PCT
+                current_val = max(min_allowed, min(max_allowed, current_val))
+
             history.append(current_val)
 
             median_val = statistics.median(history)
-            last_ema = state["ema"]
             smoothed_val = median_val if last_ema is None else (EMA_ALPHA * median_val) + ((1 - EMA_ALPHA) * last_ema)
             state["ema"] = smoothed_val
             return round(smoothed_val, 2)
