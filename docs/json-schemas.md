@@ -41,6 +41,7 @@ sf/gh1/sensors/snapshot
 값 타입:
 
 - 온도/습도/CO2/PAR/토양수분: number 또는 `null`
+- CO2 범위: `0..2000 ppm`
 - 아직 연결되지 않았거나 유효하지 않은 센서값은 `null` 허용
 
 ## 3. Weather

@@ -41,9 +41,9 @@ def voltage_to_hum_pct(voltage):
     return round(v_adj * (99.9 / 2.634), 2)
 
 def voltage_to_co2_ppm(voltage):
-    """0.666V=0ppm, 3.3V=5000ppm 변환"""
+    """0.666V=0ppm, 3.3V=2000ppm 변환"""
     v_adj = max(0, voltage - 0.666)
-    return round(v_adj * (5000 / 2.634), 1)
+    return round(v_adj * (2000 / 2.634), 1)
 
 def voltage_to_par_w_m2(voltage):
     """PAR 센서 전압 → W/m2 변환 (임시: voltage 그대로)"""
