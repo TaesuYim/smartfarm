@@ -35,6 +35,21 @@ function showToast(id) {
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
 }
+
+async function fetchJson(url, options = {}) {
+    const res = await fetch(url, options);
+    if (!res.ok) {
+        let message = `${res.status} ${res.statusText}`;
+        try {
+            const body = await res.json();
+            message = body.detail || body.error || message;
+        } catch (_) {
+            // Keep the HTTP status message when the response is not JSON.
+        }
+        throw new Error(message);
+    }
+    return res.json();
+}
 const formatTime = (ts) => {
     if (!ts) return '—';
     const d = new Date(ts);
@@ -192,7 +207,7 @@ function gatherCmds() {
 
 async function sendCommand() {
     try {
-        await fetch(API + '/command', {
+        await fetchJson(API + '/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cmds: gatherCmds() })
@@ -200,7 +215,9 @@ async function sendCommand() {
         showToast('cmd-toast');
         // 전송 성공 시 모든 dirty 플래그 해제 (이제 서버 값이 최신이므로 덮어써도 됨)
         document.querySelectorAll('#tab-control input').forEach(el => delete el.dataset.dirty);
-    } catch (e) { console.error('Command send failed', e); }
+    } catch (e) {
+        console.error('Command send failed', e);
+    }
 }
 
 let cmdTimer = null;
@@ -324,16 +341,8 @@ async function loadGraphs() {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                x: { 
-                    type: 'time', 
-                    time: { 
-                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss', 
-                        displayFormats: { 
-                            minute: 'HH:mm', 
-                            hour: 'HH:mm',
-                            day: 'MM/dd'
-                        } 
-                    },
+                x: {
+                    type: 'category',
                     ticks: {
                         autoSkip: true,
                         maxRotation: 0,
@@ -363,13 +372,7 @@ async function loadGraphs() {
             animation: false,
             responsive: true, maintainAspectRatio: false,
             scales: {
-                x: { 
-                    type: 'time', 
-                    time: { 
-                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss', 
-                        displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } 
-                    } 
-                },
+                x: { type: 'category' },
                 y: { title: { display: true, text: '토양수분 (%)' } }
             },
             plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } }
@@ -392,13 +395,7 @@ async function loadGraphs() {
             animation: false,
             responsive: true, maintainAspectRatio: false,
             scales: {
-                x: { 
-                    type: 'time', 
-                    time: { 
-                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss', 
-                        displayFormats: { minute: 'HH:mm', hour: 'HH:mm' } 
-                    } 
-                },
+                x: { type: 'category' },
                 y: { title: { display: true, text: 'PAR (W/m²)' } }
             },
             plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } } }
@@ -421,7 +418,7 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
         heartbeat_timeout_sec: document.getElementById('s-hb-timeout').value
     };
     try {
-        await fetch(API + '/settings', {
+        await fetchJson(API + '/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -489,43 +486,5 @@ function startLoop() {
     refreshTimer = setInterval(fetchLatest, refreshMs);
 }
 
-// ═══════════════════════════════════════════════════════
-//  INITIAL CALIBRATION (WINDOW 5S CLOSE)
-// ═══════════════════════════════════════════════════════
-
-async function runInitialCalibration() {
-    console.log("Starting initial calibration: Closing windows (reversed) for 5s...");
-    const closeCmds = {
-        window_1_cmd: "open",  // Reversed to match actual motor
-        window_2_cmd: "open"
-    };
-
-    try {
-        // 1. Send close command
-        await fetch(API + '/command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cmds: closeCmds })
-        });
-
-        // 2. Wait for 5 seconds
-        setTimeout(async () => {
-            console.log("Calibration complete: Stopping windows.");
-            const stopCmds = {
-                window_1_cmd: "stop",
-                window_2_cmd: "stop"
-            };
-            await fetch(API + '/command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cmds: stopCmds })
-            });
-        }, 5000);
-    } catch (e) {
-        console.error("Initial calibration failed", e);
-    }
-}
-
 // Start everything
 startLoop(); // 데이터 루프부터 즉시 시작
-runInitialCalibration(); 
