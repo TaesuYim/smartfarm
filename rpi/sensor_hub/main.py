@@ -150,8 +150,6 @@ SAMPLE_DELAY_SEC = 0.005
 SETTLE_DELAY_SEC = 0.01
 HISTORY_SIZE = 5
 EMA_ALPHA = 0.8
-HUMIDITY_RESET_DELTA_PCT = 1.2
-HUMIDITY_RESET_COUNT = 2
 
 FILTER_STATE = {}
 
@@ -224,36 +222,12 @@ def read_snapshot(ch_4b, ch_49, ch_48):
             state = FILTER_STATE.setdefault(key, {
                 "history": collections.deque(maxlen=HISTORY_SIZE),
                 "ema": None,
-                "shift_direction": 0,
-                "shift_count": 0,
             })
             history = state["history"]
-
-            last_ema = state["ema"]
-            if key in ("hum_pot", "hum_top") and last_ema is not None:
-                delta = current_val - last_ema
-                direction = 1 if delta > 0 else -1
-                if abs(delta) >= HUMIDITY_RESET_DELTA_PCT:
-                    if direction == state["shift_direction"]:
-                        state["shift_count"] += 1
-                    else:
-                        state["shift_direction"] = direction
-                        state["shift_count"] = 1
-
-                    if state["shift_count"] >= HUMIDITY_RESET_COUNT:
-                        history.clear()
-                        history.append(current_val)
-                        state["ema"] = current_val
-                        state["shift_direction"] = 0
-                        state["shift_count"] = 0
-                        return round(current_val, 2)
-                else:
-                    state["shift_direction"] = 0
-                    state["shift_count"] = 0
-
             history.append(current_val)
 
             median_val = statistics.median(history)
+            last_ema = state["ema"]
             smoothed_val = median_val if last_ema is None else (EMA_ALPHA * median_val) + ((1 - EMA_ALPHA) * last_ema)
             state["ema"] = smoothed_val
             return round(smoothed_val, 2)
