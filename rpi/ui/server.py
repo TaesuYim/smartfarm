@@ -4,6 +4,7 @@ import sqlite3
 import subprocess
 import time
 import os
+import threading
 import paho.mqtt.client as mqtt
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,7 @@ if project_root not in sys.path:
 from rpi.logger.db import monthly_db_path, DEFAULT_DB_DIR, now_kst_iso, init_db, connect_db
 
 app = FastAPI(title="SFES Lab API")
+calibration_started = False
 
 # --- Background Services ---
 def _is_running(pattern):
@@ -77,6 +79,45 @@ def start_background_services():
     
     print("--- Background Services Check Complete ---\n")
 
+def publish_actuator_command(cmds):
+    c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    try:
+        c.connect("127.0.0.1", 1883, 60)
+        c.loop_start()
+
+        full_payload = {"ts": now_kst_iso(), "source": "sfes_lab_ui", **cmds}
+        res = c.publish("sf/gh1/actuators/cmd", json.dumps(full_payload))
+        res.wait_for_publish(timeout=3)
+
+        if res.rc != mqtt.MQTT_ERR_SUCCESS:
+            raise RuntimeError("MQTT publish failed")
+    finally:
+        c.loop_stop()
+        c.disconnect()
+
+def run_window_startup_calibration():
+    try:
+        print("Starting window startup calibration...")
+        publish_actuator_command({
+            "window_1_cmd": "open",
+            "window_2_cmd": "open",
+        })
+        time.sleep(5)
+        publish_actuator_command({
+            "window_1_cmd": "stop",
+            "window_2_cmd": "stop",
+        })
+        print("Window startup calibration complete.")
+    except Exception as e:
+        print(f"Window startup calibration failed: {e}")
+
+def start_window_startup_calibration_once():
+    global calibration_started
+    if calibration_started:
+        return
+    calibration_started = True
+    threading.Thread(target=run_window_startup_calibration, daemon=True).start()
+
 @app.on_event("startup")
 def startup_event():
     # Ensure DB is initialized
@@ -91,6 +132,7 @@ def startup_event():
         print(f"DB Initialization failed: {e}")
     
     start_background_services()
+    start_window_startup_calibration_once()
 
 # --- DB Helpers ---
 def _q(sql, params=(), one=False):
@@ -183,20 +225,8 @@ class CommandPayload(BaseModel):
 @app.post("/api/command")
 def send_command(payload: CommandPayload):
     try:
-        c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-        c.connect("127.0.0.1", 1883, 60)
-        c.loop_start()
-        
-        full_payload = {"ts": now_kst_iso(), "source": "sfes_lab_ui", **payload.cmds}
-        res = c.publish("sf/gh1/actuators/cmd", json.dumps(full_payload))
-        
-        c.loop_stop()
-        c.disconnect()
-        
-        if res.rc == mqtt.MQTT_ERR_SUCCESS:
-            return {"status": "success"}
-        else:
-            raise HTTPException(status_code=500, detail="MQTT publish failed")
+        publish_actuator_command(payload.cmds)
+        return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

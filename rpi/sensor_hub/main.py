@@ -12,13 +12,22 @@ sf/gh1/sensors/snapshot MQTT 토픽에 발행합니다.
 
 import argparse
 import json
+import sys
 import time
 import statistics
 import collections
 import random
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 import paho.mqtt.client as mqtt
+
+# Allow both `python -m rpi.sensor_hub.main` and direct script execution.
+project_root = str(Path(__file__).resolve().parents[2])
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from rpi.logger.db import DEFAULT_DB_DIR, monthly_db_path, connect_db, init_db
 
 try:
     import board
@@ -99,6 +108,29 @@ def try_init_ads(i2c, address):
 # 각 채널별 마지막 정상 값과 슬라이딩 윈도우 버퍼
 HISTORY_BUFFERS = {}
 EMA_VALUES = {}
+
+def read_measurement_period_seconds(default_period):
+    db_path = monthly_db_path(DEFAULT_DB_DIR)
+    if not db_path.exists():
+        return default_period
+
+    try:
+        with connect_db(db_path) as conn:
+            init_db(conn)
+            row = conn.execute(
+                "SELECT value FROM app_setting WHERE key = ?",
+                ("measurement_interval_sec",),
+            ).fetchone()
+    except Exception:
+        return default_period
+
+    if not row:
+        return default_period
+
+    try:
+        return max(0.1, float(row["value"]))
+    except (TypeError, ValueError):
+        return default_period
 
 def read_snapshot(ch_4b, ch_49, ch_48):
     """
@@ -195,12 +227,12 @@ def main():
     args = parser.parse_args()
 
     topic = f"sf/{args.gh}/sensors/snapshot"
-    period = 1.0 / args.rate
+    default_period = 1.0 / args.rate
 
     print("=== SmartFarm Sensor Snapshot Publisher ===")
     print(f"  온실: {args.gh}")
     print(f"  MQTT 토픽: {topic}")
-    print(f"  발행 주기: {period:.1f}s")
+    print(f"  발행 주기: {default_period:.1f}s")
     print()
 
     # MQTT 연결
@@ -252,6 +284,7 @@ def main():
 
             # 루프 실행 시간을 고려하여 남은 시간만큼만 대기
             elapsed = time.time() - loop_start
+            period = read_measurement_period_seconds(default_period)
             time.sleep(max(0, period - elapsed))
 
     except KeyboardInterrupt:
