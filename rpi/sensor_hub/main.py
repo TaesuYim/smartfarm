@@ -14,6 +14,7 @@ import argparse
 import json
 import time
 import statistics
+import collections
 import random
 from datetime import datetime, timezone, timedelta
 
@@ -29,26 +30,32 @@ except (ImportError, Exception):
     HAS_HARDWARE = False
 
 # ==========================================
-# 전압 → 물리량 변환 함수
-# TODO: 실제 센서 데이터시트/캘리브레이션 값으로 수정 필요
-# 현재는 voltage 값을 그대로 사용합니다.
+# 전압 → 물리량 변환 및 캘리브레이션
 # ==========================================
 
+# 센서별 보정값 (실제 값과 차이가 날 경우 여기서 가감하세요)
+TEMP_OFFSET = 0.0
+HUM_OFFSET  = 0.0
+CO2_OFFSET  = 0.0
+
 def voltage_to_temp_c(voltage):
-    """0.666V=-19.9C, 3.3V=60C 변환"""
-    # 전압이 0.666 미만일 경우 처리 (하한값 보정)
-    v_adj = max(0, voltage - 0.666)
-    return round((v_adj * (79.9 / 2.634)) - 19.9, 2)
+    """0.686V=-19.9C, 3.3V=60C 변환 (0.6도 하향 보정을 위해 기준 전압을 0.666V에서 0.686V로 상향 조정)"""
+    v_adj = max(0, voltage - 0.686)
+    val = (v_adj * (79.9 / 2.634)) - 19.9
+    return round(val + TEMP_OFFSET, 2)
 
 def voltage_to_hum_pct(voltage):
-    """0.666V=0%, 3.3V=99.9% 변환"""
-    v_adj = max(0, voltage - 0.666)
-    return round(v_adj * (99.9 / 2.634), 2)
+    """0.655V=0%, 3.3V=100% 변환 (0.665V에서 0.4% 낮게 측정되어 0.655V로 미세 조정)"""
+    v_adj = max(0, voltage - 0.655)
+    val = v_adj * (99.9 / 2.634)
+    # 습도는 0~100% 사이로 제한
+    return round(max(0, min(100, val + HUM_OFFSET)), 2)
 
 def voltage_to_co2_ppm(voltage):
     """0.666V=0ppm, 3.3V=5000ppm 변환"""
     v_adj = max(0, voltage - 0.666)
-    return round(v_adj * (5000 / 2.634), 1)
+    val = v_adj * (5000 / 2.634)
+    return round(max(0, val + CO2_OFFSET), 1)
 
 def voltage_to_par_w_m2(voltage):
     """PAR 센서 전압 → W/m2 변환 (임시: voltage 그대로)"""
@@ -89,9 +96,9 @@ def try_init_ads(i2c, address):
         return None, []
 
 
-# 각 채널별 마지막 정상 값과 연속 튀는 횟수 저장
-LAST_GOOD_VALUES = {}
-OUTLIER_COUNT = {}
+# 각 채널별 마지막 정상 값과 슬라이딩 윈도우 버퍼
+HISTORY_BUFFERS = {}
+EMA_VALUES = {}
 
 def read_snapshot(ch_4b, ch_49, ch_48):
     """
@@ -111,13 +118,13 @@ def read_snapshot(ch_4b, ch_49, ch_48):
     """
     def safe_read(channels, idx, convert_fn, key, threshold):
         try:
-            # 채널 전환 후 전압 안정화를 위해 첫 번째 값은 버립니다.
+            # 채널 전환 후 전압 안정화
             _ = channels[idx].voltage
             time.sleep(0.01)
 
-            # 5번 읽어서 중간값(median)을 취함
+            # 15번 읽어서 하드웨어 중간값 취함 (노이즈 상쇄를 위한 충분한 샘플 수)
             samples = []
-            for _ in range(5):
+            for _ in range(15):
                 v = channels[idx].voltage
                 if v > 0.005:
                     samples.append(v)
@@ -126,10 +133,40 @@ def read_snapshot(ch_4b, ch_49, ch_48):
             if not samples:
                 return None
                 
-            median_v = statistics.median(samples)
-            current_val = convert_fn(median_v)
+            # --- 상위 절사 평균 (Upper-Trimmed Mean) 필터 ---
+            # 전압 강하(뚝 떨어지는) 노이즈가 많으므로 하위 50%를 버리고, 
+            # 위로 튀는 최상위 값 1~2개도 버린 후 '상위권 안정값'들의 평균을 구함
+            samples.sort()
+            n = len(samples)
+            if n >= 5:
+                # 예: 15개 샘플이면 하위 7개 버림, 최상위 2개 버림 -> 8번째 ~ 13번째 값의 평균
+                valid_samples = samples[n//2 : n - (n//8 + 1)]
+                filtered_v = statistics.mean(valid_samples) if valid_samples else statistics.median(samples)
+            else:
+                filtered_v = statistics.median(samples)
+                
+            current_val = convert_fn(filtered_v)
             
-            return current_val
+            # --- 강력한 슬라이딩 윈도우 최댓값 필터 (값 갇힘 현상 원천 차단) ---
+            if key not in HISTORY_BUFFERS:
+                # 2Hz 기준 10개 = 5초 분량의 데이터 유지
+                HISTORY_BUFFERS[key] = collections.deque(maxlen=10)
+                
+            HISTORY_BUFFERS[key].append(current_val)
+            
+            # 최근 5초간의 데이터 중 중간값을 선택 (자연스러운 노이즈의 중심값)
+            window_median = statistics.median(HISTORY_BUFFERS[key])
+            
+            # --- 부드러운 UI 표시를 위한 가벼운 EMA ---
+            alpha = 0.5
+            last_ema = EMA_VALUES.get(key)
+            if last_ema is not None:
+                smoothed_val = (alpha * window_median) + ((1 - alpha) * last_ema)
+            else:
+                smoothed_val = window_median
+                
+            EMA_VALUES[key] = smoothed_val
+            return round(smoothed_val, 2)
         except Exception:
             return None
 
@@ -154,7 +191,7 @@ def main():
     parser.add_argument("--gh", default="gh1", choices=["gh1"], help="온실 ID (현재 구현: gh1)")
     parser.add_argument("--host", default="127.0.0.1", help="MQTT 브로커 호스트")
     parser.add_argument("--port", default=1883, type=int, help="MQTT 브로커 포트")
-    parser.add_argument("--rate", default=1.0, type=float, help="초당 발행 횟수 (기본: 1)")
+    parser.add_argument("--rate", default=2.0, type=float, help="초당 발행 횟수 (기본: 2)")
     args = parser.parse_args()
 
     topic = f"sf/{args.gh}/sensors/snapshot"

@@ -78,8 +78,9 @@ def fetch_and_save():
     now = datetime.now(KST)
     obs_time = now.replace(minute=0, second=0, microsecond=0)
     
-    # 5분 이전에는 데이터가 생성 전일 확률이 높으므로 이전 시각 데이터로 시도 (필요시 정시 데이터 시도)
-    if now.minute < 5:
+    # 기상청 데이터는 보통 매시 5분~10분 사이에 업데이트됩니다.
+    # 안전하게 10분 이전에는 이전 시간 데이터를, 10분 이후에는 현재 시간 데이터를 요청합니다.
+    if now.minute < 10:
         obs_time -= timedelta(hours=1)
 
     params = {
@@ -142,11 +143,9 @@ def fetch_and_save():
         return False
 
 def main():
-    print("Starting Weather Service (Retry logic: 3 times / 1min)...")
+    print("Starting Weather Service (Runs at 10 minutes past the hour)...")
     while True:
-        now = datetime.now(KST)
-        next_run = (now + timedelta(hours=1)).replace(minute=1, second=0, microsecond=0)
-        
+        # 1. 데이터 가져오기 시도 (즉시 실행)
         success = False
         for i in range(3):
             if fetch_and_save():
@@ -159,7 +158,14 @@ def main():
         if not success:
             clear_weather_ui()
         
-        wait_sec = (next_run - datetime.now(KST)).total_seconds()
+        # 2. 다음 실행 시간 계산 (다음 시간 10분)
+        now_after_fetch = datetime.now(KST)
+        if now_after_fetch.minute < 10:
+            next_run = now_after_fetch.replace(minute=10, second=0, microsecond=0)
+        else:
+            next_run = (now_after_fetch + timedelta(hours=1)).replace(minute=10, second=0, microsecond=0)
+            
+        wait_sec = (next_run - now_after_fetch).total_seconds()
         if wait_sec > 0:
             print(f"Next update at {next_run.strftime('%H:%M:%S')} (Wait {int(wait_sec)}s)")
             time.sleep(wait_sec)
