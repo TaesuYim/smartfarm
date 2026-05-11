@@ -218,6 +218,8 @@ KST(UTC+9) 기준, `YYYY-MM-DDTHH:MM:SS` 형식, 초 단위 정밀도. 타임존
 | ADS1115 data_rate | `860` SPS | 읽기 속도 향상 (기본 128 → 860) |
 | DB 캐싱 | 5초 | DB 접근 빈도 최소화 |
 
+> **참고**: UI 서버(`server.py`)는 `PRAGMA journal_mode=WAL`로 DB를 읽으므로, sensor_hub → mqtt_logger의 쓰기와 UI 읽기가 서로 블로킹하지 않습니다. 상세 내용은 [ui-spec.md](ui-spec.md) 섹션 12를 참조하세요.
+
 ## 13. 관련 문서
 
 - [pin-map.md](pin-map.md) — ADS1115 채널-센서 물리 배선

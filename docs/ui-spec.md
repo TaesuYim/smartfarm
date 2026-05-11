@@ -42,6 +42,9 @@
 - UI의 그래프 탭은 SQLite의 과거값을 읽어 표시
 - 제어 입력은 MQTT command로 publish
 - 기준 운영 대상은 `GH1` 1개이며, topic 구조는 `sf/gh1/...`를 유지
+- 프론트엔드 기본 폴링 주기는 **2초** (`refreshMs = 2000`), 설정 탭에서 `ui_refresh_sec`으로 동적 변경 가능
+- 백엔드는 월별 SQLite DB에 대해 **연결 풀링**을 사용하여 매 요청마다 connect/close하지 않음
+- DB 연결 시 `PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL`을 적용하여 읽기 성능 향상 및 logger 쓰기와의 동시성 확보
 
 ## 4. 모니터링 탭
 
@@ -221,7 +224,17 @@ chromium-browser --kiosk http://127.0.0.1:8000
 - weather 데이터 미수신 시 경고 또는 빈 상태 표시 권장
 - MQTT broker 연결 상태 표시 권장
 
-## 12. 확인 필요
+## 12. 주요 설계 결정 사항
+
+| 항목 | 결정 | 이유 |
+| --- | --- | --- |
+| 프론트엔드 폴링 주기 | `2초` (기본) | 센서 변화값 반영 체감 속도 개선 |
+| DB 연결 풀링 | 월별 DB당 1개 연결 캐싱 | 매 요청 connect/close의 SD카드 I/O 오버헤드 제거 |
+| SQLite WAL 모드 | `journal_mode=WAL` | mqtt_logger 쓰기와 UI 읽기의 동시 접근 허용 |
+| SQLite synchronous | `NORMAL` | WAL 모드에서의 읽기 성능 최적화 |
+| DB 접근 스레드 안전 | `threading.Lock` + `check_same_thread=False` | FastAPI 멀티스레드 환경에서 안전한 공유 연결 |
+
+## 13. 확인 필요
 
 - 설정 탭의 저장 관련 주기는 실제로는 sensor hub 측정/publish 주기임
 - UI는 화면만 담당하고 프로세스 실행/재시작은 supervisor/systemd가 담당
