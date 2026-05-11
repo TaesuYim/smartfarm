@@ -162,6 +162,9 @@ def _q(sql, params=(), one=False):
     if conn is None:
         return None if one else []
     with _db_lock:
+        # SQLite에서 이전 쿼리의 암시적 읽기 트랜잭션이 남아있으면
+        # 새로 삽입된 데이터(WAL)를 볼 수 없으므로 commit을 호출해 스냅샷을 갱신
+        conn.commit()
         rows = conn.execute(sql, params).fetchall()
     if one: return dict(rows[0]) if rows else None
     return [dict(r) for r in rows]

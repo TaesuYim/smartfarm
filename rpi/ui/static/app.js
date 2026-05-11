@@ -484,15 +484,15 @@ document.getElementById('c-arduino-power').addEventListener('change', async (e) 
 
 async function fetchLatest() {
     try {
-        const res = await fetch(API + '/latest');
+        const res = await fetch(API + '/latest?_t=' + Date.now(), { cache: 'no-store' });
         const data = await res.json();
         renderMonitoring(data);
         renderControls(data);
 
         // Update refresh interval from server
         if (data.settings?.ui_refresh_sec) {
-            const newMs = parseInt(data.settings.ui_refresh_sec) * 1000;
-            if (newMs !== refreshMs) {
+            const newMs = parseFloat(data.settings.ui_refresh_sec) * 1000;
+            if (newMs && newMs !== refreshMs) {
                 refreshMs = newMs;
                 startLoop();
             }
