@@ -7,7 +7,7 @@ MQTT payload JSON 구조입니다. 현재 구현/운영 대상은 `GH1`이며, `
 
 권장 공통 필드:
 
-- `ts`: ISO 8601 timestamp string
+- `ts`: `YYYY-MM-DDTHH:MM:SS` 형식 timestamp string (KST 기준, 타임존 접미사 없음)
 - `source`: publisher name
 - `seq`: command/state 연결용 integer, 선택
 
@@ -19,7 +19,7 @@ Topic:
 sf/gh1/sensors/snapshot
 ```
 
-물리 입력은 ADS1115 4개, 총 16채널입니다. `0x4a/A0..A3`는 spare 채널이며, 운영 `sensor_snapshot` payload에는 UI에서 쓰는 완성형 센서값만 포함합니다.
+물리 입력은 ADS1115 4개, 총 16채널입니다. `0x4a/A0..A3`는 spare 채널이며, 운영 `sensor_snapshot` payload에는 UI에서 쓰는 완성형 센서값만 포함합니다. 전압 변환 공식 및 필터링 로직은 [sensor-hub-spec.md](sensor-hub-spec.md)를 참조하세요.
 
 권장 필드:
 
@@ -169,4 +169,5 @@ logger는 MQTT 메시지를 수신하는 즉시 월별 DB에 저장합니다.
 - [environment-config.md](environment-config.md) — 네트워크/브로커 설정
 - [mqtt-topics.md](mqtt-topics.md) — MQTT 토픽 구조와 저장 테이블 매핑
 - [naming-conventions.md](naming-conventions.md) — 필드 네이밍 규칙
+- [sensor-hub-spec.md](sensor-hub-spec.md) — sensor hub 구현 상세 (전압 변환, 필터링, MQTT 발행)
 

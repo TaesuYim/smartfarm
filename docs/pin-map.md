@@ -76,6 +76,7 @@
 - Node 2 LED 기본 brightness: 100%
 - 이 문서는 핀 배치 기준 문서이며, 실제 전원선/드라이버/공통 GND를 포함한 배선도는 별도 문서로 정리합니다.
 - MQTT 키 이름과 DB 필드 이름은 각각 `docs/naming-conventions.md`, `docs/db-schema.md`를 기준으로 맞춥니다.
+- ADS1115 채널별 전압→물리량 변환 공식은 [sensor-hub-spec.md](sensor-hub-spec.md)를 참조합니다.
 
 ## 5. 추후 추가 예정
 

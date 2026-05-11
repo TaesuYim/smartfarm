@@ -91,7 +91,7 @@ MQTT 메시지를 받아 SQLite에 저장합니다.
 
 ```bash
 python -m rpi.logger.mqtt_logger --db-dir data
-python -m rpi.sensor_hub.main
+python -m rpi.sensor_hub.sensor_to_publish
 uvicorn rpi.ui.server:app --host 0.0.0.0 --port 8000
 ```
 

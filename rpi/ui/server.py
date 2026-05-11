@@ -50,11 +50,11 @@ def start_background_services():
         print("  MQTT Logger is already running.")
 
     # 2. Sensor Hub (Publisher)
-    if not _is_running("rpi.sensor_hub.main"):
+    if not _is_running("rpi.sensor_hub.sensor_to_publish"):
         print("  Starting Sensor Hub...")
         sensor_log = Path(project_root) / "sensor_pub.log"
         try:
-            cmd = [sys.executable, "-m", "rpi.sensor_hub.main"]
+            cmd = [sys.executable, "-m", "rpi.sensor_hub.sensor_to_publish"]
             with open(sensor_log, "a") as f:
                 subprocess.Popen(cmd, cwd=project_root, stdout=f, stderr=f, start_new_session=True)
             print("  Sensor Hub started.")

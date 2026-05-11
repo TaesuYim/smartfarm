@@ -26,7 +26,8 @@ smartfarm/
 │  ├─ naming-conventions.md
 │  ├─ pin-map.md
 │  ├─ repository-structure.md
-│  └─ environment-config.md
+│  ├─ environment-config.md
+│  └─ sensor-hub-spec.md
 ├─ rpi/
 │  ├─ README.md
 │  ├─ logger/
@@ -90,8 +91,9 @@ MQTT 메시지를 받아 월별 SQLite DB에 저장하는 서비스 위치입니
 
 ADS1115 센서값을 읽고 완성형 `sensor_snapshot` MQTT payload를 publish하는 서비스입니다.
 
-- `main.py`: 센서 읽기 및 MQTT 발행 루프
-- 실행: `python -m rpi.sensor_hub.main`
+- `sensor_to_publish.py`: 센서 읽기 및 MQTT 발행 루프
+- 실행: `python -m rpi.sensor_hub.sensor_to_publish`
+- 상세 스펙: [sensor-hub-spec.md](sensor-hub-spec.md)
 
 ### `rpi/weather_service/`
 
@@ -166,7 +168,7 @@ Raspberry Pi boot
 ```bash
 uvicorn rpi.ui.server:app --host 0.0.0.0 --port 8000
 python -m rpi.logger.mqtt_logger
-python -m rpi.sensor_hub.main
+python -m rpi.sensor_hub.sensor_to_publish
 # weather_service (planned)
 ```
 

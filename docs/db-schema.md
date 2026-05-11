@@ -30,10 +30,10 @@ smartfarm_2026_06.sqlite3
 
 - DB engine: SQLite 3
 - 현재 저장되는 `greenhouse` 값은 `gh1`입니다.
-- timestamp는 ISO 8601 문자열을 사용합니다.
+- timestamp는 `YYYY-MM-DDTHH:MM:SS` 형식 문자열을 사용합니다 (KST 기준, 타임존 접미사 없음). 단, DB 내부 `received_at`/`updated_at` DEFAULT는 SQLite 자동 생성입니다.
 - JSON key와 DB column은 `lower_snake_case`를 사용합니다.
 - logger는 MQTT 메시지를 수신하는 즉시 저장합니다.
-- `measurement_interval_sec`는 sensor hub 측정/publish 주기입니다.
+- `measurement_interval_sec`는 sensor hub 측정/publish 주기입니다. 상세 동작은 [sensor-hub-spec.md](sensor-hub-spec.md)를 참조하세요.
 
 ## 3. 테이블 목록
 

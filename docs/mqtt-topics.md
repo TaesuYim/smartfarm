@@ -8,7 +8,7 @@
 - MQTT broker는 Raspberry Pi에서 실행하는 것을 기본으로 합니다.
 - topic은 모두 lower-case를 사용합니다.
 - payload는 JSON을 기본으로 합니다.
-- timestamp는 ISO 8601 문자열을 사용합니다.
+- timestamp는 `YYYY-MM-DDTHH:MM:SS` 형식 문자열을 사용합니다 (KST 기준, 타임존 접미사 없음).
 - logger는 MQTT 수신 즉시 월별 SQLite DB에 저장합니다.
 - 설정 탭의 측정 주기는 sensor hub의 측정/publish 주기입니다.
 
@@ -29,11 +29,11 @@
 
 ## 3. `sf/gh1/sensors/snapshot`
 
-ADS1115 값을 변환한 완성형 센서 payload입니다.
+ADS1115 값을 변환한 완성형 센서 payload입니다. 전압→물리량 변환 및 노이즈 필터링 상세는 [sensor-hub-spec.md](sensor-hub-spec.md)를 참조하세요.
 
 ```json
 {
-  "ts": "2026-04-30T10:00:00+09:00",
+  "ts": "2026-04-30T10:00:00",
   "source": "rpi5_main",
   "temp_pot_c": 27.3,
   "hum_pot_pct": 55.2,
@@ -56,8 +56,8 @@ ADS1115 값을 변환한 완성형 센서 payload입니다.
 
 ```json
 {
-  "ts": "2026-05-03T01:00:00+09:00",
-  "fetched_at": "2026-05-03T01:01:00+09:00",
+  "ts": "2026-05-03T01:00:00",
+  "fetched_at": "2026-05-03T01:01:00",
   "source": "kma",
   "station_id": "146",
   "internal_temp_c": 24.7,
@@ -89,7 +89,7 @@ UI가 Arduino control node로 보내는 제어 명령입니다. 모든 key가 �
 
 ```json
 {
-  "ts": "2026-04-30T10:00:00+09:00",
+  "ts": "2026-04-30T10:00:00",
   "source": "sfes_lab_ui",
   "seq": 1001,
   "vent_fan_pwm_pct": 50,
@@ -122,7 +122,7 @@ UI가 Arduino control node로 보내는 제어 명령입니다. 모든 key가 �
 
 ```json
 {
-  "ts": "2026-05-05T08:00:00+09:00",
+  "ts": "2026-05-05T08:00:00",
   "source": "sfes_lab_ui_startup",
   "window_1_cmd": "close",
   "window_2_cmd": "close"
@@ -133,7 +133,7 @@ UI가 Arduino control node로 보내는 제어 명령입니다. 모든 key가 �
 
 ```json
 {
-  "ts": "2026-05-05T08:00:05+09:00",
+  "ts": "2026-05-05T08:00:05",
   "source": "sfes_lab_ui_startup",
   "window_1_cmd": "stop",
   "window_2_cmd": "stop"
@@ -146,7 +146,7 @@ Arduino가 실제 적용 결과를 publish합니다.
 
 ```json
 {
-  "ts": "2026-04-30T10:00:01+09:00",
+  "ts": "2026-04-30T10:00:01",
   "source": "arduino_node_1",
   "seq": 1001,
   "result": "ok",
@@ -183,7 +183,7 @@ Arduino online/offline 판단용 신호입니다.
 
 ```json
 {
-  "ts": "2026-04-30T10:00:00+09:00",
+  "ts": "2026-04-30T10:00:00",
   "source": "arduino_node_1",
   "uptime_ms": 123456
 }
@@ -195,7 +195,7 @@ Arduino online/offline 판단용 신호입니다.
 
 ```json
 {
-  "ts": "2026-04-30T10:00:00+09:00",
+  "ts": "2026-04-30T10:00:00",
   "source": "arduino_node_1",
   "vent_fan_rpm": 1800,
   "circ_fan_1_rpm": 1500,
