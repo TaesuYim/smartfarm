@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════
 
 const API = '/api';
-let refreshMs = 5000;
+let refreshMs = 2000;
 let refreshTimer = null;
 let chartEnv = null, chartSoil = null, chartPar = null;
 

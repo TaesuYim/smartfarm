@@ -134,12 +134,34 @@ def startup_event():
     start_background_services()
     start_window_startup_calibration_once()
 
-# --- DB Helpers ---
-def _q(sql, params=(), one=False):
+# --- DB Helpers (Connection Pooling) ---
+_db_conn = None
+_db_conn_path = None
+_db_lock = threading.Lock()
+
+def _get_read_conn():
+    """월별 DB에 대한 캐싱된 읽기 연결을 반환. WAL 모드로 읽기 성능 향상."""
+    global _db_conn, _db_conn_path
     p = monthly_db_path(DEFAULT_DB_DIR)
-    if not p.exists(): return None if one else []
-    with closing(sqlite3.connect(p)) as conn:
-        conn.row_factory = sqlite3.Row
+    if not p.exists():
+        return None
+    with _db_lock:
+        if _db_conn is None or _db_conn_path != p:
+            if _db_conn is not None:
+                try: _db_conn.close()
+                except: pass
+            _db_conn = sqlite3.connect(str(p), check_same_thread=False)
+            _db_conn.row_factory = sqlite3.Row
+            _db_conn.execute("PRAGMA journal_mode=WAL")
+            _db_conn.execute("PRAGMA synchronous=NORMAL")
+            _db_conn_path = p
+        return _db_conn
+
+def _q(sql, params=(), one=False):
+    conn = _get_read_conn()
+    if conn is None:
+        return None if one else []
+    with _db_lock:
         rows = conn.execute(sql, params).fetchall()
     if one: return dict(rows[0]) if rows else None
     return [dict(r) for r in rows]
@@ -255,9 +277,11 @@ def set_arduino_power(payload: PowerPayload):
 
 @app.post("/api/settings")
 def save_settings(settings: Dict[str, str]):
-    p = monthly_db_path(DEFAULT_DB_DIR)
+    conn = _get_read_conn()
+    if conn is None:
+        raise HTTPException(status_code=500, detail="DB not available")
     try:
-        with closing(sqlite3.connect(p)) as conn:
+        with _db_lock:
             for k, v in settings.items():
                 conn.execute(
                     "INSERT INTO app_setting(key,value,updated_at) VALUES(?,?,?) "
