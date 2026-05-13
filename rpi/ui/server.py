@@ -76,6 +76,20 @@ def start_background_services():
             print(f"  Failed to start Weather Service: {e}")
     else:
         print("  Weather Service is already running.")
+
+    # 4. GPIO Bridge (Arduino power control via MQTT)
+    if not _is_running("rpi.services.gpio_bridge"):
+        print("  Starting GPIO Bridge...")
+        gpio_log = Path(project_root) / "gpio_bridge.log"
+        try:
+            with open(gpio_log, "a") as f:
+                subprocess.Popen([sys.executable, "-m", "rpi.services.gpio_bridge"],
+                                 cwd=project_root, stdout=f, stderr=f, start_new_session=True)
+            print("  GPIO Bridge started.")
+        except Exception as e:
+            print(f"  Failed to start GPIO Bridge: {e}")
+    else:
+        print("  GPIO Bridge is already running.")
     
     print("--- Background Services Check Complete ---\n")
 
@@ -255,25 +269,27 @@ def send_command(payload: CommandPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-arduino_relay = None
-
 class PowerPayload(BaseModel):
     state: str
 
 @app.post("/api/arduino/power")
 def set_arduino_power(payload: PowerPayload):
-    global arduino_relay
+    """아두이노 전원 제어 — MQTT를 통해 gpio_bridge 데몬에 위임."""
     try:
-        from gpiozero import OutputDevice
-        if arduino_relay is None:
-            # 객체를 전역에 유지하여 핀 상태 초기화 방지
-            arduino_relay = OutputDevice(17, active_high=True, initial_value=None)
-            
-        if payload.state == "on":
-            arduino_relay.on()
-        else:
-            arduino_relay.off()
-            
+        c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        c.connect("127.0.0.1", 1883, 60)
+        c.loop_start()
+        msg = json.dumps({
+            "ts": now_kst_iso(),
+            "source": "sfes_lab_ui",
+            "state": payload.state,
+        })
+        res = c.publish("sf/gh1/system/arduino-power", msg)
+        res.wait_for_publish(timeout=3)
+        c.loop_stop()
+        c.disconnect()
+        if res.rc != mqtt.MQTT_ERR_SUCCESS:
+            raise RuntimeError("MQTT publish failed")
         return {"status": "success", "state": payload.state}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

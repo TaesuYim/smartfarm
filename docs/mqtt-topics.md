@@ -22,6 +22,8 @@
 | `sf/gh1/actuators/state` | Arduino -> broker | `actuator_history` | 실제 적용 상태 |
 | `sf/gh1/actuators/heartbeat` | Arduino -> broker | `heartbeat` | Arduino 생존 신호 |
 | `sf/gh1/actuators/fan-rpm` | Arduino -> broker | `fan_rpm` | 팬 RPM |
+| `sf/gh1/system/arduino-power` | Any controller -> broker | — | 아두이노 전원 제어 명령 |
+| `sf/gh1/system/arduino-power/state` | gpio_bridge -> broker | — | 아두이노 전원 상태 응답 |
 | `sensor/ads1115_*/+/raw` | sensor test -> broker | `ads_reading` | ADS raw 디버깅 |
 | `sensor/ads1115_*/+/voltage` | sensor test -> broker | `ads_reading` | ADS voltage 디버깅 |
 
@@ -203,11 +205,56 @@ Arduino online/offline 판단용 신호입니다.
 }
 ```
 
-## 9. Arduino reset
+## 9. Arduino 전원 제어 (`sf/gh1/system/arduino-power`)
 
-Arduino 재부팅은 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
+Arduino 전원(리셋)은 MQTT 토픽을 통해 제어합니다. 라즈베리파이에서 독립 데몬 `gpio_bridge`가 이 토픽을 구독하고, GPIO 17번 핀(릴레이)을 직접 제어합니다.
 
-운영 UI에서는 reset 버튼을 제공하지만, 실제 GPIO 제어는 UI 프로세스가 직접 하지 않고 별도 helper 또는 system service가 담당합니다.
+UI 서버, 외부 제어 시스템 등 어떤 MQTT 클라이언트든 이 토픽에 publish하면 아두이노 전원을 제어할 수 있습니다.
+
+### 명령 토픽: `sf/gh1/system/arduino-power`
+
+```json
+{
+  "ts": "2026-05-14T01:40:00",
+  "source": "sfes_lab_ui",
+  "state": "on"
+}
+```
+
+| 필드 | 설명 |
+| --- | --- |
+| `source` | 명령을 보낸 주체 (예: `sfes_lab_ui`, `external_controller`) |
+| `state` | `"on"` 또는 `"off"` |
+
+### 응답 토픽: `sf/gh1/system/arduino-power/state`
+
+`gpio_bridge` 데몬이 GPIO 제어 후 결과를 publish합니다.
+
+```json
+{
+  "ts": "2026-05-14T01:40:01",
+  "state": "on",
+  "result": "ok"
+}
+```
+
+| `result` 값 | 의미 |
+| --- | --- |
+| `ok` | GPIO 제어 성공 |
+| `ok_dry_run` | GPIO 미사용 환경 (Windows 등) |
+| `error` | 제어 실패 (`error` 필드에 상세 메시지 포함) |
+
+### 아키텍처
+
+```
+제어 시스템 (UI / 외부)  ── MQTT publish ──>  sf/gh1/system/arduino-power
+                                                        │
+                                                        ▼
+                                            gpio_bridge.py (독립 데몬)
+                                            - MQTT subscribe
+                                            - gpiozero → GPIO 17 릴레이 제어
+                                            - 결과 publish → sf/gh1/system/arduino-power/state
+```
 
 ## 10. QoS/retain 정책
 
@@ -223,4 +270,3 @@ Arduino 재부팅은 Raspberry Pi GPIO + 릴레이 helper로 수행합니다.
 
 - `ads_reading` raw topic을 운영 배포 후에도 유지할지 결정 필요
 - command publish QoS/retain 정책 확정 필요
-- GPIO reset helper를 로컬 서비스로 둘지, 별도 HTTP API 형태로 둘지 구현 방식 확정 필요

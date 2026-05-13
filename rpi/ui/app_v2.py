@@ -73,18 +73,6 @@ def _start_background_services():
 
 _start_background_services()
 
-@st.cache_resource
-def get_relay():
-    if os.name == 'nt':
-        # Windows에서는 가상의 릴레이 객체 반환
-        class DummyRelay:
-            def on(self): pass
-            def off(self): pass
-        return DummyRelay()
-    try:
-        from gpiozero import OutputDevice
-        return OutputDevice(17, active_high=True, initial_value=True)
-    except: return None
 
 # ---------------------------------------------------------------------------
 # Constants & DB
@@ -297,20 +285,22 @@ def monitoring_tab_fragment():
         if "t_pwr" not in st.session_state: st.session_state.t_pwr = True
         
         def on_p_ch():
-            # 콜백 내에서는 UI 요소를 직접 그리지 않고 로직만 수행
-            rl = get_relay()
-            if rl:
-                state = st.session_state.t_arduino_pwr = st.session_state.t_pwr
-                if state: rl.on()
-                else: rl.off()
-            else:
+            state = st.session_state.t_pwr
+            try:
+                c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+                c.connect("127.0.0.1", 1883, 60); c.loop_start()
+                payload = json.dumps({"ts": now_kst_iso(), "source": "sfes_lab_ui", "state": "on" if state else "off"})
+                c.publish("sf/gh1/system/arduino-power", payload)
+                c.loop_stop(); c.disconnect()
+                st.session_state.t_arduino_pwr = state
+            except Exception:
                 st.session_state.pwr_err = True
 
         st.toggle("아두이노 전원", key="t_pwr", on_change=on_p_ch)
 
         # 에러가 발생했다면 본문에서 출력 (Fragment 안전 방식)
         if st.session_state.get("pwr_err"):
-            st.error("⚠️ GPIO 접근 실패! (다른 프로그램 확인 필요)")
+            st.error("⚠️ MQTT 전송 실패! (브로커 상태 확인 필요)")
             if st.button("에러 닫기"): del st.session_state["pwr_err"]; st.rerun()
         elif "t_arduino_pwr" in st.session_state:
             st.toast(f"🔌 전원 {'ON' if st.session_state.t_arduino_pwr else 'OFF'}")
