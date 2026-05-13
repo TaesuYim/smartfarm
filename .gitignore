@@ -24,3 +24,5 @@ weather_service.log
 # OS
 .DS_Store
 .history/
+smartfarm.sqlite3
+weather_data.csv
